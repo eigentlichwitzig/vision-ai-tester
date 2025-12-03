@@ -656,7 +656,7 @@ export function useTestRunner() {
       // Build output object with OCR text
       const output: TestOutput = {
         raw: rawContent,
-        ocrText: ocrText,
+        ocrText,
         promptTokens: (ocrResponse.data.prompt_eval_count ?? 0) + (parseResponse.data.prompt_eval_count ?? 0),
         completionTokens: (ocrResponse.data.eval_count ?? 0) + (parseResponse.data.eval_count ?? 0),
         totalDuration: (ocrResponse.data.total_duration ?? 0) + (parseResponse.data.total_duration ?? 0)
