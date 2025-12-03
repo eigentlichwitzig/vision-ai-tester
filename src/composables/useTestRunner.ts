@@ -219,12 +219,14 @@ export function useTestRunner() {
     progress.value = 'Preparing request...'
 
     // Create test input from file data
+    // Note: base64Content is intentionally empty to avoid storing large file content in test history.
+    // The original file can be re-uploaded if needed. This saves memory and IndexedDB storage.
     const testInput: TestInput = {
       fileName: params.file.fileName,
       fileType: params.file.fileType,
       mimeType: params.file.mimeType,
       size: params.file.size,
-      base64Content: '', // Don't store full content in test run
+      base64Content: '',
       thumbnail: params.file.thumbnail
     }
 
@@ -238,7 +240,7 @@ export function useTestRunner() {
         numCtx,
         systemPrompt,
         userPrompt,
-        schemaId: configStore.selectedSchemaId ?? undefined
+        schemaId: configStore.selectedSchemaId || undefined
       },
       input: testInput
     })
@@ -360,7 +362,17 @@ export function useTestRunner() {
       error.value = null
       progress.value = ''
 
-      return testStore.currentTestRun!
+      // Return the completed test run
+      const completedTestRun = testStore.currentTestRun
+      if (!completedTestRun) {
+        throw {
+          code: 'UNKNOWN_ERROR',
+          message: 'Test run was not created properly.',
+          details: 'currentTestRun is null after completion'
+        } as PipelineError
+      }
+      
+      return completedTestRun
     } catch (err) {
       // Handle unexpected errors
       const endTime = performance.now()
