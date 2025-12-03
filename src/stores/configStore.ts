@@ -5,7 +5,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { PipelineType, TestParameters } from '@/types/models'
+import type { PipelineType, TestParameters, FileUploadData } from '@/types/models'
 
 /**
  * Default system prompt for structured extraction
@@ -60,6 +60,9 @@ export const useConfigStore = defineStore('config', () => {
   const showAdvancedOptions = ref<boolean>(false)
   const autoSaveTests = ref<boolean>(true)
   const theme = ref<'light' | 'dark'>('light')
+  
+  // Current file state (not persisted - file data is transient)
+  const currentFile = ref<FileUploadData | null>(null)
 
   // Getters
   const isOcrPipeline = computed(() => selectedPipeline.value === 'ocr-then-parse')
@@ -152,6 +155,20 @@ export const useConfigStore = defineStore('config', () => {
     theme.value = newTheme
   }
 
+  /**
+   * Set the current uploaded file
+   */
+  function setFile(fileData: FileUploadData | null): void {
+    currentFile.value = fileData
+  }
+
+  /**
+   * Clear the current uploaded file
+   */
+  function clearFile(): void {
+    currentFile.value = null
+  }
+
   return {
     // State
     selectedPipeline,
@@ -168,6 +185,7 @@ export const useConfigStore = defineStore('config', () => {
     showAdvancedOptions,
     autoSaveTests,
     theme,
+    currentFile,
     
     // Getters
     isOcrPipeline,
@@ -183,7 +201,9 @@ export const useConfigStore = defineStore('config', () => {
     updateParameters,
     resetParameters,
     toggleAdvancedOptions,
-    setTheme
+    setTheme,
+    setFile,
+    clearFile
   }
 }, {
   persist: true

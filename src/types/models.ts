@@ -55,3 +55,29 @@ export interface JsonSchema {
   description?: string
   schema: object
 }
+
+/**
+ * File upload data after processing
+ */
+export interface FileUploadData {
+  file: File
+  fileName: string
+  fileType: 'pdf' | 'image'
+  mimeType: string
+  size: number
+  sizeFormatted: string           // "2.5 MB"
+  base64Content: string           // Raw base64 WITHOUT prefix
+  thumbnail?: string              // Optional preview (for images)
+  isLarge: boolean                // >1MB
+  isVeryLarge: boolean            // >5MB
+  timestamp: Date
+}
+
+/**
+ * File upload error types
+ */
+export interface FileUploadError {
+  code: 'INVALID_TYPE' | 'FILE_TOO_LARGE' | 'CONVERSION_FAILED' | 'UNKNOWN'
+  message: string
+  details?: string
+}

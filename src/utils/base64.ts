@@ -129,3 +129,74 @@ export function isBase64Pdf(base64String: string): boolean {
   const mimeType = getMimeTypeFromDataUri(base64String)
   return mimeType === 'application/pdf'
 }
+
+/**
+ * Supported file extension to MIME type mapping
+ */
+const FILE_EXTENSION_MAP: Record<string, string> = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png'
+}
+
+/**
+ * Supported MIME types for file upload
+ */
+const UPLOAD_SUPPORTED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
+
+/**
+ * Validate file type against accepted types
+ * @param file - File to validate
+ * @param acceptedTypes - Array of accepted extensions (e.g., ['pdf', 'jpg', 'jpeg', 'png'])
+ * @returns true if file type is valid
+ */
+export function isValidFileType(file: File, acceptedTypes: string[]): boolean {
+  // Get file extension from name
+  const extension = file.name.split('.').pop()?.toLowerCase() || ''
+  
+  // Check if extension is in accepted types
+  if (!acceptedTypes.includes(extension)) {
+    return false
+  }
+  
+  // Get expected MIME type for this extension
+  const expectedMimeType = FILE_EXTENSION_MAP[extension]
+  if (!expectedMimeType) {
+    return false
+  }
+  
+  // Validate that file's MIME type matches expected
+  // Handle case where browser might not provide MIME type
+  if (!file.type) {
+    return acceptedTypes.includes(extension)
+  }
+  
+  return file.type === expectedMimeType && UPLOAD_SUPPORTED_MIME_TYPES.includes(file.type)
+}
+
+/**
+ * Get file type category
+ * @param file - File to categorize
+ * @returns 'pdf' | 'image' | 'unknown'
+ */
+export function getFileType(file: File): 'pdf' | 'image' | 'unknown' {
+  if (file.type === 'application/pdf') {
+    return 'pdf'
+  }
+  
+  if (file.type === 'image/jpeg' || file.type === 'image/png') {
+    return 'image'
+  }
+  
+  // Fallback to extension-based detection
+  const extension = file.name.split('.').pop()?.toLowerCase() || ''
+  if (extension === 'pdf') {
+    return 'pdf'
+  }
+  if (['jpg', 'jpeg', 'png'].includes(extension)) {
+    return 'image'
+  }
+  
+  return 'unknown'
+}
