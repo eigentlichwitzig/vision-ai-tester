@@ -10,8 +10,13 @@ export {
   listModels,
   chat,
   chatWithAbort,
-  cancelCurrentRequest
+  cancelCurrentRequest,
+  pingOllama,
+  parseConnectionError
 } from './ollama'
+
+// Re-export health check result type
+export type { HealthCheckResult } from './ollama'
 
 // Re-export API types
 export type {
@@ -19,7 +24,9 @@ export type {
   ApiResponse,
   OllamaChatRequest,
   OllamaChatResponse,
-  OllamaListResponse
+  OllamaListResponse,
+  HealthError,
+  HealthErrorCode
 } from './types'
 
 export { OLLAMA_ENDPOINTS } from './types'

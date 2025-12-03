@@ -9,6 +9,7 @@ import { useConfigStore } from '@/stores/configStore'
 import { useTestStore } from '@/stores/testStore'
 import { useSchemaStore } from '@/stores/schemaStore'
 import { useSchemaValidator } from '@/composables/useSchemaValidator'
+import { useOllamaHealth } from '@/composables/useOllamaHealth'
 import type { 
   TestRun, 
   TestInput, 
@@ -224,6 +225,20 @@ export function useTestRunner() {
     const configStore = useConfigStore()
     const testStore = useTestStore()
     const schemaStore = useSchemaStore()
+    const { isOnline, checkHealth } = useOllamaHealth()
+
+    // Check Ollama connectivity before running
+    if (!isOnline.value) {
+      await checkHealth()
+    }
+    
+    if (!isOnline.value) {
+      throw {
+        code: 'SERVER_UNREACHABLE',
+        message: 'Ollama server is not reachable. Please check connectivity.',
+        details: 'Start Ollama and ensure it is running on localhost:11434'
+      } as PipelineError
+    }
 
     // Validate required inputs
     if (!params.file) {
@@ -451,6 +466,20 @@ export function useTestRunner() {
     const configStore = useConfigStore()
     const testStore = useTestStore()
     const schemaStore = useSchemaStore()
+    const { isOnline, checkHealth } = useOllamaHealth()
+
+    // Check Ollama connectivity before running
+    if (!isOnline.value) {
+      await checkHealth()
+    }
+    
+    if (!isOnline.value) {
+      throw {
+        code: 'SERVER_UNREACHABLE',
+        message: 'Ollama server is not reachable. Please check connectivity.',
+        details: 'Start Ollama and ensure it is running on localhost:11434'
+      } as PipelineError
+    }
 
     // Validate required inputs
     if (!params.file) {

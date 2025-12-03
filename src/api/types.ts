@@ -17,6 +17,25 @@ export interface ApiError {
 }
 
 /**
+ * Health check error codes
+ */
+export type HealthErrorCode = 
+  | 'CONNECTION_REFUSED'
+  | 'TIMEOUT'
+  | 'CORS_ERROR'
+  | 'HTTP_ERROR'
+  | 'UNKNOWN'
+
+/**
+ * Health check error with troubleshooting guidance
+ */
+export interface HealthError {
+  code: HealthErrorCode
+  message: string
+  guidance: string[]
+}
+
+/**
  * API response wrapper
  */
 export interface ApiResponse<T> {

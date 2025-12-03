@@ -7,6 +7,7 @@ import PipelineSelector from '@/components/config/PipelineSelector.vue'
 import ModelSelector from '@/components/config/ModelSelector.vue'
 import ParameterPanel from '@/components/config/ParameterPanel.vue'
 import ValidationErrors from '@/components/results/ValidationErrors.vue'
+import OllamaStatus from '@/components/layout/OllamaStatus.vue'
 import { useConfigStore } from '@/stores/configStore'
 import type { ValidationError } from '@/types/models'
 
@@ -53,7 +54,11 @@ const handleButtonClick = () => {
 <template>
   <div class="min-h-screen bg-gray-50 p-8">
     <div class="max-w-7xl mx-auto">
-      <h1 class="text-3xl font-bold text-gray-900 mb-6">Vision AI Tester</h1>
+      <!-- Header with title and status indicator -->
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Vision AI Tester</h1>
+        <OllamaStatus />
+      </div>
 
       <!-- Pipeline and Model Selection Demo -->
       <div class="space-y-6 mb-8">
