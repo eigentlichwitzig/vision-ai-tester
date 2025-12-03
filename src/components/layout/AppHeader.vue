@@ -56,6 +56,13 @@ withDefaults(defineProps<Props>(), {
             >
               History
             </router-link>
+            <router-link
+              to="/compare"
+              class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              active-class="text-primary-600 bg-primary-50"
+            >
+              Compare
+            </router-link>
           </nav>
         </div>
       </div>
