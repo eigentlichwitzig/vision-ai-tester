@@ -39,6 +39,32 @@ export interface DirectPipelineParams {
 }
 
 /**
+ * Parameters for OCR-then-parse pipeline execution
+ */
+export interface OcrPipelineParams {
+  /** File data with base64 content */
+  file: FileUploadData
+  /** OCR model name (e.g., 'deepseek-ocr', 'minicpm-v') */
+  ocrModel?: string
+  /** Parse model name (e.g., 'qwen2.5:7b') */
+  parseModel?: string
+  /** OCR prompt for text extraction */
+  ocrPrompt?: string
+  /** System prompt for parsing step */
+  systemPrompt?: string
+  /** User prompt for parsing step */
+  userPrompt?: string
+  /** Temperature (0 for deterministic output) */
+  temperature?: number
+  /** Maximum tokens to generate */
+  maxTokens?: number
+  /** Context window size */
+  numCtx?: number
+  /** JSON schema for structured output */
+  schema?: object
+}
+
+/**
  * Error codes for pipeline execution failures
  */
 export type PipelineErrorCode = 
@@ -51,6 +77,9 @@ export type PipelineErrorCode =
   | 'REQUEST_CANCELLED'
   | 'MISSING_FILE'
   | 'MISSING_SCHEMA'
+  | 'OCR_EXTRACTION_FAILED'
+  | 'OCR_EMPTY_RESULT'
+  | 'PARSE_STEP_FAILED'
   | 'UNKNOWN_ERROR'
 
 /**
@@ -397,6 +426,300 @@ export function useTestRunner() {
   }
 
   /**
+   * Execute the OCR-then-parse pipeline
+   * Step 1: Extract text from image using OCR model
+   * Step 2: Parse extracted text into structured JSON using text-only LLM
+   * 
+   * @param params - Pipeline execution parameters
+   * @returns Completed TestRun object
+   * @throws PipelineError if execution fails
+   */
+  async function runOcrPipeline(params: OcrPipelineParams): Promise<TestRun> {
+    const configStore = useConfigStore()
+    const testStore = useTestStore()
+    const schemaStore = useSchemaStore()
+
+    // Validate required inputs
+    if (!params.file) {
+      throw {
+        code: 'MISSING_FILE',
+        message: 'No file provided for extraction.',
+        details: 'Please upload a file before running the pipeline.'
+      } as PipelineError
+    }
+
+    // Get configuration with fallbacks
+    const ocrModel = params.ocrModel ?? configStore.selectedOcrModel
+    const parseModel = params.parseModel ?? configStore.selectedParseModel
+    const ocrPrompt = params.ocrPrompt ?? configStore.ocrPrompt
+    const systemPrompt = params.systemPrompt ?? configStore.systemPrompt
+    const userPrompt = params.userPrompt ?? configStore.userPrompt
+    const temperature = params.temperature ?? configStore.temperature
+    const maxTokens = params.maxTokens ?? configStore.maxTokens
+    const numCtx = params.numCtx ?? configStore.numCtx
+    const schema = params.schema ?? schemaStore.activeSchema?.schema
+
+    // Reset state
+    error.value = null
+    isRunning.value = true
+    progress.value = 'Step 1/2: Extracting text with OCR...'
+
+    // Create test input from file data
+    const testInput: TestInput = {
+      fileName: params.file.fileName,
+      fileType: params.file.fileType,
+      mimeType: params.file.mimeType,
+      size: params.file.size,
+      base64Content: '',
+      thumbnail: params.file.thumbnail
+    }
+
+    // Create test run record
+    const testRun = testStore.createTestRun({
+      modelName: parseModel,
+      pipeline: 'ocr-then-parse',
+      ocrModel: ocrModel,
+      parameters: {
+        temperature,
+        maxTokens,
+        numCtx,
+        systemPrompt,
+        userPrompt,
+        schemaId: configStore.selectedSchemaId || undefined
+      },
+      input: testInput
+    })
+
+    // Mark execution as started
+    testStore.startExecution()
+    const startTime = performance.now()
+
+    try {
+      // Strip base64 prefix from image content
+      const base64Image = stripBase64Prefix(params.file.base64Content)
+
+      // ==========================================
+      // STEP 1: OCR Extraction
+      // ==========================================
+      
+      // Build OCR request
+      const ocrMessages: OllamaMessage[] = [
+        {
+          role: 'user',
+          content: ocrPrompt,
+          images: [base64Image]
+        }
+      ]
+
+      const ocrRequest: OllamaChatRequest = {
+        model: ocrModel,
+        messages: ocrMessages,
+        stream: false,
+        options: {
+          temperature,
+          num_predict: maxTokens,
+          num_ctx: numCtx
+        }
+      }
+
+      // Execute OCR API call
+      const ocrResponse = await chatWithAbort(ocrRequest)
+
+      // Handle OCR API errors
+      if (!ocrResponse.success || !ocrResponse.data) {
+        const apiError = ocrResponse.error
+        let errorCode: PipelineErrorCode = 'OCR_EXTRACTION_FAILED'
+        let errorMessage = apiError?.message ?? 'OCR extraction failed'
+
+        // Categorize API errors
+        if (apiError?.code === 'CANCELLED') {
+          errorCode = 'REQUEST_CANCELLED'
+          errorMessage = 'Request was cancelled.'
+        } else if (apiError?.code === 'FETCH_ERROR' || apiError?.code === 'CONNECTION_ERROR') {
+          errorCode = 'SERVER_UNREACHABLE'
+          errorMessage = 'Cannot connect to Ollama server.'
+        } else if (apiError?.code === 'REQUEST_FAILED') {
+          errorCode = 'OCR_EXTRACTION_FAILED'
+          errorMessage = `OCR extraction failed: ${apiError.message}`
+        }
+
+        isRunning.value = false
+        error.value = errorMessage
+        progress.value = ''
+
+        await testStore.failExecution(errorMessage)
+
+        throw {
+          code: errorCode,
+          message: errorMessage,
+          details: apiError?.message
+        } as PipelineError
+      }
+
+      // Extract OCR text from response
+      const ocrText = ocrResponse.data.message.content
+
+      // Validate OCR result
+      if (!ocrText || ocrText.trim().length === 0) {
+        const errorMessage = 'OCR extraction returned empty result. The image may be unreadable.'
+        
+        isRunning.value = false
+        error.value = errorMessage
+        progress.value = ''
+
+        await testStore.failExecution(errorMessage)
+
+        throw {
+          code: 'OCR_EMPTY_RESULT',
+          message: errorMessage,
+          details: 'OCR model returned empty or whitespace-only content'
+        } as PipelineError
+      }
+
+      // ==========================================
+      // STEP 2: Parse Text into Structured JSON
+      // ==========================================
+      
+      progress.value = 'Step 2/2: Parsing text into structured JSON...'
+
+      // Build parse request with extracted text
+      const parseMessages: OllamaMessage[] = [
+        {
+          role: 'system',
+          content: systemPrompt
+        },
+        {
+          role: 'user',
+          content: `${userPrompt}\n\nText:\n${ocrText}`
+        }
+      ]
+
+      const parseRequest: OllamaChatRequest = {
+        model: parseModel,
+        messages: parseMessages,
+        stream: false,
+        options: {
+          temperature,
+          num_predict: maxTokens,
+          num_ctx: numCtx
+        }
+      }
+
+      // Add schema for structured output if available
+      if (schema) {
+        parseRequest.format = schema
+      }
+
+      // Execute parse API call
+      const parseResponse = await chatWithAbort(parseRequest)
+
+      // Calculate duration (includes both steps)
+      const endTime = performance.now()
+      const duration = Math.round(endTime - startTime)
+
+      // Handle parse API errors
+      if (!parseResponse.success || !parseResponse.data) {
+        const apiError = parseResponse.error
+        let errorCode: PipelineErrorCode = 'PARSE_STEP_FAILED'
+        let errorMessage = apiError?.message ?? 'Parse step failed'
+
+        // Categorize API errors
+        if (apiError?.code === 'CANCELLED') {
+          errorCode = 'REQUEST_CANCELLED'
+          errorMessage = 'Request was cancelled.'
+        } else if (apiError?.code === 'FETCH_ERROR' || apiError?.code === 'CONNECTION_ERROR') {
+          errorCode = 'SERVER_UNREACHABLE'
+          errorMessage = 'Cannot connect to Ollama server.'
+        } else if (apiError?.code === 'REQUEST_FAILED') {
+          errorCode = 'PARSE_STEP_FAILED'
+          errorMessage = `Parse step failed: ${apiError.message}`
+        }
+
+        isRunning.value = false
+        error.value = errorMessage
+        progress.value = ''
+
+        await testStore.failExecution(errorMessage)
+
+        throw {
+          code: errorCode,
+          message: errorMessage,
+          details: apiError?.message
+        } as PipelineError
+      }
+
+      progress.value = 'Validating output...'
+
+      // Extract parse response content
+      const rawContent = parseResponse.data.message.content
+
+      // Build output object with OCR text
+      const output: TestOutput = {
+        raw: rawContent,
+        ocrText,
+        promptTokens: (ocrResponse.data.prompt_eval_count ?? 0) + (parseResponse.data.prompt_eval_count ?? 0),
+        completionTokens: (ocrResponse.data.eval_count ?? 0) + (parseResponse.data.eval_count ?? 0),
+        totalDuration: (ocrResponse.data.total_duration ?? 0) + (parseResponse.data.total_duration ?? 0)
+      }
+
+      // Try to parse JSON from response
+      try {
+        const parsed = parseJsonFromResponse(rawContent)
+        output.parsed = parsed
+
+        // Validate against schema if available
+        if (schema) {
+          const validationResult = schemaStore.validateAgainstSchema(parsed)
+          if (validationResult !== true) {
+            output.error = `Schema validation: ${validationResult}`
+          }
+        }
+      } catch (parseError) {
+        // JSON parsing failed - store error but don't fail the test
+        output.error = parseError instanceof Error 
+          ? parseError.message 
+          : 'Failed to parse response as JSON'
+      }
+
+      // Complete execution successfully
+      await testStore.completeExecution(output, duration)
+
+      isRunning.value = false
+      error.value = null
+      progress.value = ''
+
+      // Return the completed test run
+      const completedTestRun = testStore.currentTestRun
+      if (!completedTestRun) {
+        throw {
+          code: 'UNKNOWN_ERROR',
+          message: 'Test run was not created properly.',
+          details: 'currentTestRun is null after completion'
+        } as PipelineError
+      }
+      
+      return completedTestRun
+    } catch (err) {
+      // Handle unexpected errors
+      isRunning.value = false
+      progress.value = ''
+
+      // Check if already handled (PipelineError)
+      if (typeof err === 'object' && err !== null && 'code' in err) {
+        throw err
+      }
+
+      // Categorize and handle the error
+      const pipelineError = categorizeError(err)
+      error.value = pipelineError.message
+
+      await testStore.failExecution(pipelineError.message)
+
+      throw pipelineError
+    }
+  }
+
+  /**
    * Cancel the current pipeline execution
    */
   function cancelExecution(): void {
@@ -420,6 +743,7 @@ export function useTestRunner() {
     
     // Actions
     runDirectPipeline,
+    runOcrPipeline,
     cancelExecution
   }
 }
