@@ -7,7 +7,7 @@ import router from './router'
 
 // Styles
 import './assets/main.css'
-import 'primevue/resources/themes/aura-light-blue/theme.css'
+import 'primevue/resources/themes/lara-light-blue/theme.css'
 import 'primeicons/primeicons.css'
 
 const app = createApp(App)
