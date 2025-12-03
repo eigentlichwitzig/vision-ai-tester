@@ -2,12 +2,12 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import PrimeVue from 'primevue/config'
+import Aura from '@primevue/themes/aura'
 import App from './App.vue'
 import router from './router'
 
 // Styles
 import './assets/main.css'
-import 'primevue/resources/themes/aura-light-blue/theme.css'
 import 'primeicons/primeicons.css'
 
 const app = createApp(App)
@@ -20,7 +20,11 @@ app.use(pinia)
 // Router
 app.use(router)
 
-// PrimeVue
-app.use(PrimeVue)
+// PrimeVue with Aura theme
+app.use(PrimeVue, {
+  theme: {
+    preset: Aura
+  }
+})
 
 app.mount('#app')
