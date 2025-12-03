@@ -28,6 +28,9 @@ export const useTestStore = defineStore('test', () => {
 
   /**
    * Create a new test run
+   * Note: Initial status is set to 'success' as a placeholder.
+   * It will be updated by completeExecution(), failExecution(), or cancelExecution()
+   * before the test run is saved to the database.
    */
   function createTestRun(params: {
     modelName: string
@@ -48,7 +51,7 @@ export const useTestStore = defineStore('test', () => {
         raw: ''
       },
       duration: 0,
-      status: 'success'
+      status: 'success' // Placeholder - updated when test completes
     }
     
     currentTestRun.value = testRun

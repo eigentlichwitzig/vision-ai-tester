@@ -57,14 +57,14 @@ export function validateFileSize(size: number): ValidationResult {
   if (size > MAX_FILE_SIZE) {
     return {
       valid: false,
-      error: `File size (${formatFileSize(size)}) exceeds maximum allowed size (${formatFileSize(MAX_FILE_SIZE)})`
+      error: `File size (${formatFileSizeForError(size)}) exceeds maximum allowed size (${formatFileSizeForError(MAX_FILE_SIZE)})`
     }
   }
   
   if (size > WARNING_FILE_SIZE) {
     return {
       valid: true,
-      warning: `Large file (${formatFileSize(size)}) may take longer to process`
+      warning: `Large file (${formatFileSizeForError(size)}) may take longer to process`
     }
   }
   
@@ -173,8 +173,10 @@ export function validatePositiveInteger(value: number, name: string): Validation
 
 /**
  * Format file size for display
+ * Note: This is a private helper function used only within validators.
+ * The more comprehensive version in formatters.ts should be used elsewhere.
  */
-function formatFileSize(bytes: number): string {
+function formatFileSizeForError(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
