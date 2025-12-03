@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseSlider from '@/components/base/BaseSlider.vue'
+import ProgressBar from '@/components/base/ProgressBar.vue'
+import LoadingIndicator from '@/components/base/LoadingIndicator.vue'
 import PipelineSelector from '@/components/config/PipelineSelector.vue'
 import ModelSelector from '@/components/config/ModelSelector.vue'
 import ParameterPanel from '@/components/config/ParameterPanel.vue'
 import ValidationErrors from '@/components/results/ValidationErrors.vue'
 import OllamaStatus from '@/components/layout/OllamaStatus.vue'
 import { useConfigStore } from '@/stores/configStore'
+import { useTestRunner } from '@/composables/useTestRunner'
 import type { ValidationError } from '@/types/models'
 
 // Demo state
@@ -17,6 +20,95 @@ const temperatureValue = ref(0.7)
 const isLoading = ref(false)
 
 const configStore = useConfigStore()
+const { isRunning, currentStep, progressPercent, canCancel, cancelExecution } = useTestRunner()
+
+// Demo loading indicator state
+const demoIsRunning = ref(false)
+const demoCurrentStep = ref('')
+const demoProgress = ref(0)
+const demoElapsedTime = ref(0)
+let demoTimer: number | null = null
+let demoProgressTimer: number | null = null
+
+// Demo progress simulation
+function startDemoLoading() {
+  demoIsRunning.value = true
+  demoProgress.value = 0
+  demoElapsedTime.value = 0
+  demoCurrentStep.value = 'Sending request to model...'
+  
+  demoTimer = window.setInterval(() => {
+    demoElapsedTime.value++
+  }, 1000)
+  
+  // Simulate progress steps
+  const steps = [
+    { progress: 25, step: 'Processing image...', delay: 500 },
+    { progress: 50, step: 'Generating structured output...', delay: 1500 },
+    { progress: 75, step: 'Validating response...', delay: 2500 },
+    { progress: 95, step: 'Saving results...', delay: 3500 },
+    { progress: 100, step: 'Complete!', delay: 4000 }
+  ]
+  
+  steps.forEach(({ progress, step, delay }) => {
+    setTimeout(() => {
+      if (demoIsRunning.value) {
+        demoProgress.value = progress
+        demoCurrentStep.value = step
+        if (progress >= 100) {
+          stopDemoLoading()
+        }
+      }
+    }, delay)
+  })
+}
+
+function stopDemoLoading() {
+  if (demoTimer) {
+    clearInterval(demoTimer)
+    demoTimer = null
+  }
+  demoIsRunning.value = false
+}
+
+function handleDemoCancel() {
+  if (confirm('Are you sure you want to cancel this demo test?')) {
+    demoCurrentStep.value = 'Cancelled by user'
+    stopDemoLoading()
+  }
+}
+
+// Elapsed time tracking for real test runs
+const elapsedTime = ref(0)
+let timer: number | null = null
+
+watch(isRunning, (running) => {
+  if (running) {
+    elapsedTime.value = 0
+    timer = window.setInterval(() => {
+      elapsedTime.value++
+    }, 1000)
+  } else {
+    if (timer) {
+      clearInterval(timer)
+      timer = null
+    }
+  }
+})
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+  if (demoTimer) clearInterval(demoTimer)
+})
+
+function handleCancel() {
+  if (confirm('Are you sure you want to cancel this test?')) {
+    cancelExecution()
+  }
+}
+
+// Progress threshold after which cancel is disabled (during final save)
+const CANCEL_DISABLED_THRESHOLD = 95
 
 // Demo validation errors
 const demoValidationErrors = ref<ValidationError[]>([
@@ -186,6 +278,56 @@ const handleButtonClick = () => {
               disabled
             />
           </div>
+        </BaseCard>
+      </div>
+
+      <!-- Loading Indicator and Progress Bar Demo -->
+      <div class="mt-8 grid gap-6 md:grid-cols-2">
+        <!-- Progress Bar Demo -->
+        <BaseCard title="ProgressBar Component" subtitle="Progress bar with color variants and animations">
+          <div class="space-y-6">
+            <div>
+              <p class="text-sm text-gray-500 mb-2">In Progress (animated):</p>
+              <ProgressBar :progress="50" color="blue" :animated="true" />
+            </div>
+            
+            <div>
+              <p class="text-sm text-gray-500 mb-2">Complete (green):</p>
+              <ProgressBar :progress="100" color="green" :animated="false" />
+            </div>
+            
+            <div>
+              <p class="text-sm text-gray-500 mb-2">Error (red):</p>
+              <ProgressBar :progress="75" color="red" :animated="false" />
+            </div>
+
+            <div>
+              <p class="text-sm text-gray-500 mb-2">Different Heights:</p>
+              <div class="space-y-2">
+                <ProgressBar :progress="60" height="sm" />
+                <ProgressBar :progress="60" height="md" />
+                <ProgressBar :progress="60" height="lg" />
+              </div>
+            </div>
+          </div>
+        </BaseCard>
+
+        <!-- Loading Indicator Demo -->
+        <BaseCard title="LoadingIndicator Component" subtitle="Full loading UI with progress and cancel">
+          <div v-if="!demoIsRunning" class="text-center py-4">
+            <p class="text-gray-600 mb-4">Click to see the loading indicator in action</p>
+            <BaseButton @click="startDemoLoading" icon="play">
+              Start Demo
+            </BaseButton>
+          </div>
+          <LoadingIndicator
+            v-else
+            :current-step="demoCurrentStep"
+            :progress="demoProgress"
+            :elapsed-time="demoElapsedTime"
+            :can-cancel="demoProgress < CANCEL_DISABLED_THRESHOLD"
+            @cancel="handleDemoCancel"
+          />
         </BaseCard>
       </div>
 

@@ -211,7 +211,9 @@ export function useTestRunner() {
   // Execution state
   const isRunning = ref(false)
   const error = ref<string | null>(null)
-  const progress = ref<string>('')
+  const currentStep = ref<string>('')
+  const progressPercent = ref<number>(0)
+  const canCancel = ref(true)
 
   /**
    * Verify Ollama server connectivity before pipeline execution
@@ -270,7 +272,9 @@ export function useTestRunner() {
     // Reset state
     error.value = null
     isRunning.value = true
-    progress.value = 'Preparing request...'
+    currentStep.value = 'Preparing request...'
+    progressPercent.value = 0
+    canCancel.value = true
 
     // Create test input from file data
     // Note: base64Content is intentionally empty to avoid storing large file content in test history.
@@ -337,7 +341,8 @@ export function useTestRunner() {
         request.format = schema
       }
 
-      progress.value = 'Sending request to model...'
+      currentStep.value = 'Sending request to model...'
+      progressPercent.value = 25
 
       // Execute API call
       const response = await chatWithAbort(request)
@@ -366,7 +371,8 @@ export function useTestRunner() {
 
         isRunning.value = false
         error.value = errorMessage
-        progress.value = ''
+        currentStep.value = ''
+        progressPercent.value = 0
 
         await testStore.failExecution(errorMessage)
 
@@ -377,7 +383,8 @@ export function useTestRunner() {
         } as PipelineError
       }
 
-      progress.value = 'Parsing response...'
+      currentStep.value = 'Validating response...'
+      progressPercent.value = 75
 
       // Extract response content
       const rawContent = response.data.message.content
@@ -421,12 +428,18 @@ export function useTestRunner() {
         output.validationErrors = []
       }
 
+      // Disable cancel during save
+      canCancel.value = false
+      currentStep.value = 'Saving results...'
+      progressPercent.value = 95
+
       // Complete execution successfully
       await testStore.completeExecution(output, duration)
 
+      currentStep.value = 'Complete!'
+      progressPercent.value = 100
       isRunning.value = false
       error.value = null
-      progress.value = ''
 
       // Return the completed test run
       const completedTestRun = testStore.currentTestRun
@@ -445,7 +458,8 @@ export function useTestRunner() {
       const duration = Math.round(endTime - startTime)
       
       isRunning.value = false
-      progress.value = ''
+      currentStep.value = ''
+      progressPercent.value = 0
 
       // Check if already handled (PipelineError)
       if (typeof err === 'object' && err !== null && 'code' in err) {
@@ -502,7 +516,9 @@ export function useTestRunner() {
     // Reset state
     error.value = null
     isRunning.value = true
-    progress.value = 'Step 1/2: Extracting text with OCR...'
+    currentStep.value = 'Step 1/2: Extracting text with OCR...'
+    progressPercent.value = 10
+    canCancel.value = true
 
     // Create test input from file data
     const testInput: TestInput = {
@@ -585,7 +601,8 @@ export function useTestRunner() {
 
         isRunning.value = false
         error.value = errorMessage
-        progress.value = ''
+        currentStep.value = ''
+        progressPercent.value = 0
 
         await testStore.failExecution(errorMessage)
 
@@ -596,6 +613,10 @@ export function useTestRunner() {
         } as PipelineError
       }
 
+      // OCR step complete
+      currentStep.value = 'Step 1/2: OCR complete'
+      progressPercent.value = 40
+
       // Extract OCR text from response
       const ocrText = ocrResponse.data.message.content
 
@@ -605,7 +626,8 @@ export function useTestRunner() {
         
         isRunning.value = false
         error.value = errorMessage
-        progress.value = ''
+        currentStep.value = ''
+        progressPercent.value = 0
 
         await testStore.failExecution(errorMessage)
 
@@ -620,7 +642,8 @@ export function useTestRunner() {
       // STEP 2: Parse Text into Structured JSON
       // ==========================================
       
-      progress.value = 'Step 2/2: Parsing text into structured JSON...'
+      currentStep.value = 'Step 2/2: Parsing text into JSON...'
+      progressPercent.value = 50
 
       // Build parse request with extracted text
       const parseMessages: OllamaMessage[] = [
@@ -677,7 +700,8 @@ export function useTestRunner() {
 
         isRunning.value = false
         error.value = errorMessage
-        progress.value = ''
+        currentStep.value = ''
+        progressPercent.value = 0
 
         await testStore.failExecution(errorMessage)
 
@@ -688,7 +712,8 @@ export function useTestRunner() {
         } as PipelineError
       }
 
-      progress.value = 'Validating output...'
+      currentStep.value = 'Validating output...'
+      progressPercent.value = 85
 
       // Extract parse response content
       const rawContent = parseResponse.data.message.content
@@ -733,12 +758,18 @@ export function useTestRunner() {
         output.validationErrors = []
       }
 
+      // Disable cancel during save
+      canCancel.value = false
+      currentStep.value = 'Saving results...'
+      progressPercent.value = 95
+
       // Complete execution successfully
       await testStore.completeExecution(output, duration)
 
+      currentStep.value = 'Complete!'
+      progressPercent.value = 100
       isRunning.value = false
       error.value = null
-      progress.value = ''
 
       // Return the completed test run
       const completedTestRun = testStore.currentTestRun
@@ -754,7 +785,8 @@ export function useTestRunner() {
     } catch (err) {
       // Handle unexpected errors
       isRunning.value = false
-      progress.value = ''
+      currentStep.value = ''
+      progressPercent.value = 0
 
       // Check if already handled (PipelineError)
       if (typeof err === 'object' && err !== null && 'code' in err) {
@@ -778,7 +810,8 @@ export function useTestRunner() {
     if (isRunning.value) {
       cancelCurrentRequest()
       isRunning.value = false
-      progress.value = ''
+      currentStep.value = 'Cancelled by user'
+      progressPercent.value = 0
       error.value = 'Execution cancelled'
       
       // Update test store
@@ -791,7 +824,9 @@ export function useTestRunner() {
     // State
     isRunning,
     error,
-    progress,
+    currentStep,
+    progressPercent,
+    canCancel,
     
     // Actions
     runDirectPipeline,
