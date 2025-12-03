@@ -81,6 +81,24 @@ export function base64ToBlob(base64String: string, mimeType: string): Blob {
 }
 
 /**
+ * Convert a Blob to a raw base64 string (without data URI prefix)
+ */
+export function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(stripDataUriPrefix(reader.result))
+      } else {
+        reject(new Error('Failed to read blob as base64'))
+      }
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
+}
+
+/**
  * Convert a base64 string to an object URL for preview
  */
 export function base64ToObjectUrl(base64String: string, mimeType: string): string {

@@ -70,6 +70,20 @@ export interface JsonSchema {
 }
 
 /**
+ * File storage record for large files stored separately in IndexedDB
+ * Used when files exceed 5MB to optimize storage
+ */
+export interface StoredFile {
+  id: string              // UUID
+  testRunId: string       // Foreign key to TestRun
+  fileName: string
+  mimeType: string
+  size: number
+  blob: Blob              // File content stored as blob
+  createdAt: Date
+}
+
+/**
  * File upload data after processing
  */
 export interface FileUploadData {
