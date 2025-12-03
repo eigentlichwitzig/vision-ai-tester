@@ -9,6 +9,7 @@ import { useConfigStore } from '@/stores/configStore'
 import { useTestStore } from '@/stores/testStore'
 import { useSchemaStore } from '@/stores/schemaStore'
 import { useSchemaValidator } from '@/composables/useSchemaValidator'
+import { useOllamaHealth } from '@/composables/useOllamaHealth'
 import type { 
   TestRun, 
   TestInput, 
@@ -213,6 +214,26 @@ export function useTestRunner() {
   const progress = ref<string>('')
 
   /**
+   * Verify Ollama server connectivity before pipeline execution
+   * @throws PipelineError if server is unreachable
+   */
+  async function ensureOllamaConnected(): Promise<void> {
+    const { isOnline, checkHealth } = useOllamaHealth()
+    
+    if (!isOnline.value) {
+      await checkHealth()
+    }
+    
+    if (!isOnline.value) {
+      throw {
+        code: 'SERVER_UNREACHABLE',
+        message: 'Ollama server is not reachable. Please check connectivity.',
+        details: 'Start Ollama and ensure it is running on localhost:11434'
+      } as PipelineError
+    }
+  }
+
+  /**
    * Execute the direct multimodal pipeline
    * Sends image directly to vision model with JSON schema for structured extraction
    * 
@@ -224,6 +245,9 @@ export function useTestRunner() {
     const configStore = useConfigStore()
     const testStore = useTestStore()
     const schemaStore = useSchemaStore()
+
+    // Check Ollama connectivity before running
+    await ensureOllamaConnected()
 
     // Validate required inputs
     if (!params.file) {
@@ -451,6 +475,9 @@ export function useTestRunner() {
     const configStore = useConfigStore()
     const testStore = useTestStore()
     const schemaStore = useSchemaStore()
+
+    // Check Ollama connectivity before running
+    await ensureOllamaConnected()
 
     // Validate required inputs
     if (!params.file) {

@@ -9,8 +9,13 @@ import type {
   OllamaListResponse,
   OllamaModelInfo
 } from '@/types/ollama'
-import type { ApiResponse, ApiError } from './types'
+import type { ApiResponse, ApiError, HealthError, HealthErrorCode } from './types'
 import { OLLAMA_ENDPOINTS } from './types'
+
+/**
+ * Default timeout for health check requests (5 seconds)
+ */
+const HEALTH_CHECK_TIMEOUT_MS = 5000
 
 /**
  * Get the Ollama base URL from environment or use default
@@ -185,5 +190,116 @@ export function cancelCurrentRequest(): void {
   if (currentAbortController) {
     currentAbortController.abort()
     currentAbortController = null
+  }
+}
+
+/**
+ * Parse connection errors and provide troubleshooting guidance
+ * 
+ * Note: Error detection relies on error types and names rather than messages
+ * where possible, as messages can vary between browsers and versions.
+ */
+export function parseConnectionError(error: unknown): HealthError {
+  // Timeout errors (AbortError from AbortSignal.timeout)
+  // This is a reliable check based on error name, not message content
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return {
+      code: 'TIMEOUT',
+      message: 'Connection timeout',
+      guidance: [
+        'Check if Ollama is responding (may be busy processing)',
+        'Verify firewall settings allow localhost:11434',
+        'Try restarting Ollama'
+      ]
+    }
+  }
+
+  // Network/fetch errors - TypeErrors from fetch API indicate network issues
+  // In browsers, a TypeError is thrown when fetch cannot connect to the server
+  // This covers connection refused, DNS failures, and network errors
+  if (error instanceof TypeError) {
+    // TypeErrors from fetch are almost always connection failures
+    // Default to CONNECTION_REFUSED as it's the most common cause
+    return {
+      code: 'CONNECTION_REFUSED',
+      message: 'Ollama server is not running',
+      guidance: [
+        'Start Ollama: Open Ollama app or run `ollama serve`',
+        'Verify Ollama is running on localhost:11434',
+        'Check if another application is using port 11434'
+      ]
+    }
+  }
+
+  // Check for response with status 0 (often CORS or network error)
+  if (typeof error === 'object' && error !== null && 'status' in error && (error as { status: number }).status === 0) {
+    return {
+      code: 'CORS_ERROR',
+      message: 'CORS configuration error',
+      guidance: [
+        'Set environment variable: OLLAMA_ORIGINS=*',
+        'Windows: Add to System Environment Variables',
+        'Mac/Linux: Add to ~/.ollama/config',
+        'Restart Ollama after making changes'
+      ]
+    }
+  }
+
+  // Unknown error
+  return {
+    code: 'UNKNOWN',
+    message: 'Failed to connect to Ollama',
+    guidance: [
+      'Verify Ollama is installed and running',
+      'Check console for detailed error messages'
+    ]
+  }
+}
+
+/**
+ * Health check response
+ */
+export interface HealthCheckResult {
+  success: boolean
+  status?: string
+  error?: HealthError
+}
+
+/**
+ * Ping Ollama server to check connectivity
+ * Uses a short timeout to quickly determine if server is available
+ */
+export async function pingOllama(): Promise<HealthCheckResult> {
+  try {
+    const response = await fetch(`${getOllamaBaseUrl()}${OLLAMA_ENDPOINTS.TAGS}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS)
+    })
+    
+    if (!response.ok) {
+      return {
+        success: false,
+        error: {
+          code: 'HTTP_ERROR',
+          message: `Ollama returned status ${response.status}`,
+          guidance: [
+            'Ollama server may be misconfigured',
+            'Check Ollama logs for errors',
+            'Try restarting Ollama'
+          ]
+        }
+      }
+    }
+    
+    return {
+      success: true,
+      status: 'online'
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: parseConnectionError(error)
+    }
   }
 }
