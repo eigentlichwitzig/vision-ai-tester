@@ -6,7 +6,9 @@ import BaseSlider from '@/components/base/BaseSlider.vue'
 import PipelineSelector from '@/components/config/PipelineSelector.vue'
 import ModelSelector from '@/components/config/ModelSelector.vue'
 import ParameterPanel from '@/components/config/ParameterPanel.vue'
+import ValidationErrors from '@/components/results/ValidationErrors.vue'
 import { useConfigStore } from '@/stores/configStore'
+import type { ValidationError } from '@/types/models'
 
 // Demo state
 const sliderValue = ref(50)
@@ -14,6 +16,31 @@ const temperatureValue = ref(0.7)
 const isLoading = ref(false)
 
 const configStore = useConfigStore()
+
+// Demo validation errors
+const demoValidationErrors = ref<ValidationError[]>([
+  {
+    field: 'lineItems[0].quantity',
+    message: 'Must be a number',
+    schemaPath: '#/properties/lineItems/items/properties/quantity/type',
+    keyword: 'type',
+    params: { type: 'number' }
+  },
+  {
+    field: 'orderDate',
+    message: 'Must match format "date"',
+    schemaPath: '#/properties/orderDate/format',
+    keyword: 'format',
+    params: { format: 'date' }
+  },
+  {
+    field: 'totalAmount',
+    message: 'Required field "totalAmount" is missing',
+    schemaPath: '#/required',
+    keyword: 'required',
+    params: { missingProperty: 'totalAmount' }
+  }
+])
 
 const handleButtonClick = () => {
   isLoading.value = true
@@ -154,6 +181,14 @@ const handleButtonClick = () => {
               disabled
             />
           </div>
+        </BaseCard>
+      </div>
+
+      <!-- Validation Errors Demo -->
+      <div class="mt-8">
+        <BaseCard title="ValidationErrors Component Demo" subtitle="Display validation errors from JSON schema validation">
+          <p class="text-gray-600 mb-4">This component displays validation errors when JSON output doesn't match the schema.</p>
+          <ValidationErrors :errors="demoValidationErrors" />
         </BaseCard>
       </div>
 
