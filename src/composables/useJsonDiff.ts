@@ -8,13 +8,26 @@ import { create, type Delta } from 'jsondiffpatch'
 import * as htmlFormatter from 'jsondiffpatch/formatters/html'
 
 /**
+ * Simple hash function for object identification
+ * Uses id/_id if available, otherwise creates a hash from key properties
+ */
+function objectHash(obj: unknown): string {
+  const o = obj as Record<string, unknown>
+  if (o?.id !== undefined) return String(o.id)
+  if (o?._id !== undefined) return String(o._id)
+  // For objects without id, use a combination of type and first few keys
+  if (typeof obj === 'object' && obj !== null) {
+    const keys = Object.keys(o).slice(0, 3).sort()
+    return keys.map(k => `${k}:${typeof o[k]}`).join('|')
+  }
+  return String(obj)
+}
+
+/**
  * Creates and configures the jsondiffpatch instance
  */
 const differ = create({
-  objectHash: (obj: unknown) => {
-    const o = obj as Record<string, unknown>
-    return o?.id ?? o?._id ?? JSON.stringify(obj)
-  },
+  objectHash,
   arrays: {
     detectMove: true
   }

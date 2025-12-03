@@ -167,15 +167,50 @@ onMounted(async () => {
 })
 
 /** Metadata fields to compare */
-const metadataFields = [
+interface MetadataField {
+  key: string
+  label: string
+  format?: (value: unknown) => string
+}
+
+const metadataFields: MetadataField[] = [
   { key: 'modelName', label: 'Model' },
-  { key: 'pipeline', label: 'Pipeline', format: (v: string) => formatPipelineType(v as 'ocr-then-parse' | 'direct-multimodal') },
-  { key: 'duration', label: 'Duration', format: (v: number) => formatDuration(v) },
-  { key: 'timestamp', label: 'Timestamp', format: (v: Date) => formatDateTime(v instanceof Date ? v : new Date(v)) },
+  { 
+    key: 'pipeline', 
+    label: 'Pipeline', 
+    format: (v) => {
+      if (v === 'ocr-then-parse' || v === 'direct-multimodal') {
+        return formatPipelineType(v)
+      }
+      return String(v ?? '—')
+    }
+  },
+  { 
+    key: 'duration', 
+    label: 'Duration', 
+    format: (v) => typeof v === 'number' ? formatDuration(v) : '—'
+  },
+  { 
+    key: 'timestamp', 
+    label: 'Timestamp', 
+    format: (v) => {
+      if (v instanceof Date) return formatDateTime(v)
+      if (typeof v === 'string') return formatDateTime(new Date(v))
+      return '—'
+    }
+  },
   { key: 'status', label: 'Status' },
   { key: 'parameters.temperature', label: 'Temperature' },
-  { key: 'output.promptTokens', label: 'Prompt Tokens', format: (v: number) => v ? formatTokenCount(v) : '—' },
-  { key: 'output.completionTokens', label: 'Completion Tokens', format: (v: number) => v ? formatTokenCount(v) : '—' }
+  { 
+    key: 'output.promptTokens', 
+    label: 'Prompt Tokens', 
+    format: (v) => typeof v === 'number' && v > 0 ? formatTokenCount(v) : '—'
+  },
+  { 
+    key: 'output.completionTokens', 
+    label: 'Completion Tokens', 
+    format: (v) => typeof v === 'number' && v > 0 ? formatTokenCount(v) : '—'
+  }
 ]
 
 /**
@@ -320,7 +355,7 @@ function getNestedValue(obj: Record<string, unknown> | null, path: string): unkn
                   )"
                 >
                   {{ field.format 
-                    ? field.format(getNestedValue(leftRun as Record<string, unknown>, field.key) as never) 
+                    ? field.format(getNestedValue(leftRun as Record<string, unknown>, field.key)) 
                     : formatValue(getNestedValue(leftRun as Record<string, unknown>, field.key)) 
                   }}
                 </td>
@@ -332,7 +367,7 @@ function getNestedValue(obj: Record<string, unknown> | null, path: string): unkn
                   )"
                 >
                   {{ field.format 
-                    ? field.format(getNestedValue(rightRun as Record<string, unknown>, field.key) as never) 
+                    ? field.format(getNestedValue(rightRun as Record<string, unknown>, field.key)) 
                     : formatValue(getNestedValue(rightRun as Record<string, unknown>, field.key)) 
                   }}
                 </td>
