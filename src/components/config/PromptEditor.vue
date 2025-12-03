@@ -62,21 +62,26 @@ const charCountClass = computed(() => {
   return 'text-gray-400'
 })
 
-// Unique ID for accessibility
-let editorIdCounter = 0
-const editorId = `prompt-editor-${++editorIdCounter}-${Date.now()}`
+// Unique ID for accessibility using crypto API for uniqueness
+const editorId = `prompt-editor-${crypto.randomUUID().slice(0, 8)}`
 
 // Copy to clipboard
 const copied = ref(false)
+const copyFailed = ref(false)
 const copyToClipboard = async () => {
   try {
     await navigator.clipboard.writeText(localValue.value)
     copied.value = true
+    copyFailed.value = false
     setTimeout(() => {
       copied.value = false
     }, 2000)
   } catch {
-    // Clipboard API not available or failed
+    // Clipboard API not available or failed - show error state
+    copyFailed.value = true
+    setTimeout(() => {
+      copyFailed.value = false
+    }, 2000)
   }
 }
 </script>
@@ -100,11 +105,11 @@ const copyToClipboard = async () => {
         <button
           type="button"
           class="text-xs text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 rounded px-1"
-          :title="copied ? 'Copied!' : 'Copy to clipboard'"
+          :title="copied ? 'Copied!' : copyFailed ? 'Copy failed' : 'Copy to clipboard'"
           @click="copyToClipboard"
         >
           <i
-            :class="['pi', copied ? 'pi-check text-green-500' : 'pi-copy']"
+            :class="['pi', copied ? 'pi-check text-green-500' : copyFailed ? 'pi-times text-red-500' : 'pi-copy']"
             aria-hidden="true"
           />
         </button>

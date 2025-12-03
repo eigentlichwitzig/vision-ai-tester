@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useConfigStore } from '@/stores/configStore'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseSlider from '@/components/base/BaseSlider.vue'
@@ -62,12 +62,18 @@ const ocrPrompt = computed({
   set: (value: string) => { configStore.ocrPrompt = value }
 })
 
-// Advanced options toggle
-const showAdvanced = ref(configStore.showAdvancedOptions)
+// Advanced options toggle - use computed to stay in sync with store
+const showAdvanced = computed({
+  get: () => configStore.showAdvancedOptions,
+  set: (value: boolean) => {
+    if (value !== configStore.showAdvancedOptions) {
+      configStore.toggleAdvancedOptions()
+    }
+  }
+})
 
 const toggleAdvanced = () => {
   showAdvanced.value = !showAdvanced.value
-  configStore.toggleAdvancedOptions()
 }
 
 // Reset to defaults
