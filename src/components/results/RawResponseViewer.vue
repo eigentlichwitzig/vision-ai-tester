@@ -119,7 +119,7 @@ function toggleWordWrap(): void {
               >
                 {{ index + 1 }}
               </td>
-              <td class="line-content">{{ line || ' ' }}</td>
+              <td class="line-content" :aria-label="line ? undefined : 'Empty line'">{{ line || '\u00A0' }}</td>
             </tr>
           </tbody>
         </table>

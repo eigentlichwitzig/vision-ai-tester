@@ -136,6 +136,47 @@ const demoValidationErrors = ref<ValidationError[]>([
   }
 ])
 
+// Demo data for ResultsPanel - defined as constants outside reactive ref for performance
+const DEMO_PARSED_DATA = {
+  orderNumber: '12345',
+  orderDate: '2024-12-03',
+  customerName: 'ACME Corporation',
+  lineItems: [
+    {
+      description: 'Construction Materials - Steel Beams',
+      quantity: 5,
+      unitPrice: 250.00,
+      totalPrice: 1250.00
+    },
+    {
+      description: 'Concrete Mix - Premium Grade',
+      quantity: 10,
+      unitPrice: 45.00,
+      totalPrice: 450.00
+    }
+  ],
+  subtotal: 1700.00,
+  tax: 170.00,
+  totalAmount: 1870.00
+}
+
+const DEMO_RAW_JSON = JSON.stringify(DEMO_PARSED_DATA, null, 2)
+
+const DEMO_OCR_TEXT = `Order Number: 12345
+Date: 2024-12-03
+Customer: ACME Corporation
+
+Line Items:
+1. Construction Materials - Steel Beams
+   Quantity: 5 units @ $250.00 = $1,250.00
+
+2. Concrete Mix - Premium Grade
+   Quantity: 10 units @ $45.00 = $450.00
+
+Subtotal: $1,700.00
+Tax (10%): $170.00
+Total Amount: $1,870.00`
+
 // Demo test run for ResultsPanel
 const demoTestRun = ref<TestRun>({
   id: 'demo-test-run-1',
@@ -158,64 +199,9 @@ const demoTestRun = ref<TestRun>({
     base64Content: ''
   },
   output: {
-    raw: JSON.stringify({
-      orderNumber: '12345',
-      orderDate: '2024-12-03',
-      customerName: 'ACME Corporation',
-      lineItems: [
-        {
-          description: 'Construction Materials - Steel Beams',
-          quantity: 5,
-          unitPrice: 250.00,
-          totalPrice: 1250.00
-        },
-        {
-          description: 'Concrete Mix - Premium Grade',
-          quantity: 10,
-          unitPrice: 45.00,
-          totalPrice: 450.00
-        }
-      ],
-      subtotal: 1700.00,
-      tax: 170.00,
-      totalAmount: 1870.00
-    }, null, 2),
-    parsed: {
-      orderNumber: '12345',
-      orderDate: '2024-12-03',
-      customerName: 'ACME Corporation',
-      lineItems: [
-        {
-          description: 'Construction Materials - Steel Beams',
-          quantity: 5,
-          unitPrice: 250.00,
-          totalPrice: 1250.00
-        },
-        {
-          description: 'Concrete Mix - Premium Grade',
-          quantity: 10,
-          unitPrice: 45.00,
-          totalPrice: 450.00
-        }
-      ],
-      subtotal: 1700.00,
-      tax: 170.00,
-      totalAmount: 1870.00
-    },
-    ocrText: `Order Number: 12345
-Date: 2024-12-03
-Customer: ACME Corporation
-
-Line Items:
-1. Construction Materials - Steel Beams
-   Quantity: 5 units @ $250.00 = $1,250.00
-
-2. Concrete Mix - Premium Grade
-   Quantity: 10 units @ $45.00 = $450.00
-
-Subtotal: $1,700.00
-Tax (10%): $170.00
-Total Amount: $1,870.00`,
+    raw: DEMO_RAW_JSON,
+    parsed: DEMO_PARSED_DATA,
+    ocrText: DEMO_OCR_TEXT,
     isValid: true,
     validationErrors: [],
     promptTokens: 1024,

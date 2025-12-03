@@ -86,16 +86,22 @@ function toggleMode(): void {
         <i class="pi pi-inbox" />
         <p>No JSON data available</p>
       </div>
-      <JsonEditorVue
-        v-else
-        :model-value="data"
-        :mode="mode"
-        :main-menu-bar="false"
-        :navigation-bar="false"
-        :status-bar="false"
-        :read-only="readonly"
-        class="json-editor"
-      />
+      <div 
+        v-else 
+        class="json-editor-wrapper"
+        role="region"
+        aria-label="JSON data viewer"
+      >
+        <JsonEditorVue
+          :model-value="data"
+          :mode="mode"
+          :main-menu-bar="false"
+          :navigation-bar="false"
+          :status-bar="false"
+          :read-only="readonly"
+          class="json-editor"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -207,6 +213,10 @@ function toggleMode(): void {
 
 .empty-state p {
   font-size: 0.9375rem;
+}
+
+.json-editor-wrapper {
+  height: 100%;
 }
 
 .json-editor {

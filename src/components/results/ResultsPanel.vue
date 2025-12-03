@@ -59,6 +59,12 @@ const hasValidationErrors = computed(() => {
   return validationErrors.value.length > 0
 })
 
+// Helper: Normalize timestamp to Date object
+function normalizeTimestamp(timestamp: Date | string | undefined | null): Date | null {
+  if (!timestamp) return null
+  return timestamp instanceof Date ? timestamp : new Date(timestamp)
+}
+
 // Computed: Format duration for display
 const formattedDuration = computed(() => {
   if (!props.testRun?.duration) return '-'
@@ -74,11 +80,8 @@ const formattedTokens = computed(() => {
 
 // Computed: Format timestamp for display
 const formattedTimestamp = computed(() => {
-  if (!props.testRun?.timestamp) return '-'
-  // Handle both Date objects and serialized dates
-  const timestamp = props.testRun.timestamp instanceof Date 
-    ? props.testRun.timestamp 
-    : new Date(props.testRun.timestamp)
+  const timestamp = normalizeTimestamp(props.testRun?.timestamp)
+  if (!timestamp) return '-'
   return formatTimestamp(timestamp)
 })
 

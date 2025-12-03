@@ -81,7 +81,7 @@ async function handleCopy(): Promise<void> {
         <p class="empty-hint">OCR text is only available for OCR → Parse pipeline runs</p>
       </div>
       <div v-else class="text-content">
-        <pre>{{ content }}</pre>
+        <pre v-text="content"></pre>
       </div>
     </div>
   </div>
