@@ -5,6 +5,7 @@ import BaseCard from '@/components/base/BaseCard.vue'
 import BaseSlider from '@/components/base/BaseSlider.vue'
 import PipelineSelector from '@/components/config/PipelineSelector.vue'
 import ModelSelector from '@/components/config/ModelSelector.vue'
+import ParameterPanel from '@/components/config/ParameterPanel.vue'
 import { useConfigStore } from '@/stores/configStore'
 
 // Demo state
@@ -60,6 +61,9 @@ const handleButtonClick = () => {
             </template>
           </div>
         </BaseCard>
+
+        <!-- Parameter Panel -->
+        <ParameterPanel :show-ocr-prompt="configStore.isOcrPipeline" />
       </div>
 
       <!-- Base Components Demo -->
