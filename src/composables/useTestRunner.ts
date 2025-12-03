@@ -712,11 +712,8 @@ export function useTestRunner() {
         } as PipelineError
       }
 
-      currentStep.value = 'Step 2/2: Parsing complete'
-      progressPercent.value = 80
-
       currentStep.value = 'Validating output...'
-      progressPercent.value = 90
+      progressPercent.value = 85
 
       // Extract parse response content
       const rawContent = parseResponse.data.message.content

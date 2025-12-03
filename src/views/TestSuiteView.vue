@@ -107,6 +107,9 @@ function handleCancel() {
   }
 }
 
+// Progress threshold after which cancel is disabled (during final save)
+const CANCEL_DISABLED_THRESHOLD = 95
+
 // Demo validation errors
 const demoValidationErrors = ref<ValidationError[]>([
   {
@@ -322,7 +325,7 @@ const handleButtonClick = () => {
             :current-step="demoCurrentStep"
             :progress="demoProgress"
             :elapsed-time="demoElapsedTime"
-            :can-cancel="demoProgress < 95"
+            :can-cancel="demoProgress < CANCEL_DISABLED_THRESHOLD"
             @cancel="handleDemoCancel"
           />
         </BaseCard>
