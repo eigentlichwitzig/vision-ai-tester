@@ -6,6 +6,17 @@ export type PipelineType = 'ocr-then-parse' | 'direct-multimodal'
 export type TestStatus = 'success' | 'error' | 'cancelled'
 export type FileType = 'pdf' | 'image'
 
+/**
+ * Validation error from JSON schema validation
+ */
+export interface ValidationError {
+  field: string           // JSON path (e.g., "lineItems[0].quantity")
+  message: string         // Human-readable error
+  schemaPath: string      // Schema location
+  keyword: string         // AJV error keyword (type, required, etc.)
+  params?: object         // Additional error details
+}
+
 export interface TestParameters {
   temperature: number
   maxTokens?: number
@@ -30,6 +41,8 @@ export interface TestOutput {
   parsed?: object               // Validated JSON object
   ocrText?: string              // Intermediate OCR output (if pipeline 1)
   error?: string
+  validationErrors?: ValidationError[]  // Validation errors from schema validation
+  isValid?: boolean                     // Whether output passed schema validation
   promptTokens?: number
   completionTokens?: number
   totalDuration?: number

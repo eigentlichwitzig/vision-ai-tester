@@ -8,6 +8,7 @@ import { chatWithAbort, cancelCurrentRequest } from '@/api'
 import { useConfigStore } from '@/stores/configStore'
 import { useTestStore } from '@/stores/testStore'
 import { useSchemaStore } from '@/stores/schemaStore'
+import { useSchemaValidator } from '@/composables/useSchemaValidator'
 import type { 
   TestRun, 
   TestInput, 
@@ -372,16 +373,28 @@ export function useTestRunner() {
 
         // Validate against schema if available
         if (schema) {
-          const validationResult = schemaStore.validateAgainstSchema(parsed)
-          if (validationResult !== true) {
-            output.error = `Schema validation: ${validationResult}`
+          const schemaValidator = useSchemaValidator()
+          const validResult = schemaValidator.validate(parsed, schema)
+          output.isValid = validResult
+          
+          if (!validResult) {
+            output.validationErrors = schemaValidator.errors.value
+            output.error = 'JSON output failed schema validation - see validation errors for details'
+          } else {
+            output.validationErrors = []
           }
+        } else {
+          // No schema to validate against - consider it valid
+          output.isValid = true
+          output.validationErrors = []
         }
       } catch (parseError) {
         // JSON parsing failed - store error but don't fail the test
         output.error = parseError instanceof Error 
           ? parseError.message 
           : 'Failed to parse response as JSON'
+        output.isValid = false
+        output.validationErrors = []
       }
 
       // Complete execution successfully
@@ -669,16 +682,28 @@ export function useTestRunner() {
 
         // Validate against schema if available
         if (schema) {
-          const validationResult = schemaStore.validateAgainstSchema(parsed)
-          if (validationResult !== true) {
-            output.error = `Schema validation: ${validationResult}`
+          const schemaValidator = useSchemaValidator()
+          const validResult = schemaValidator.validate(parsed, schema)
+          output.isValid = validResult
+          
+          if (!validResult) {
+            output.validationErrors = schemaValidator.errors.value
+            output.error = 'JSON output failed schema validation - see validation errors for details'
+          } else {
+            output.validationErrors = []
           }
+        } else {
+          // No schema to validate against - consider it valid
+          output.isValid = true
+          output.validationErrors = []
         }
       } catch (parseError) {
         // JSON parsing failed - store error but don't fail the test
         output.error = parseError instanceof Error 
           ? parseError.message 
           : 'Failed to parse response as JSON'
+        output.isValid = false
+        output.validationErrors = []
       }
 
       // Complete execution successfully

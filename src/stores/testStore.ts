@@ -68,20 +68,27 @@ export const useTestStore = defineStore('test', () => {
 
   /**
    * Complete test execution with success
+   * Status is determined by validation: valid output = success, invalid output = error
    */
   async function completeExecution(output: TestRun['output'], duration: number): Promise<void> {
     if (currentTestRun.value) {
       currentTestRun.value.output = output
       currentTestRun.value.duration = duration
-      currentTestRun.value.status = 'success'
       
-      // Save to database
+      // Set status based on validation
+      if (output.isValid === false) {
+        currentTestRun.value.status = 'error'
+      } else {
+        currentTestRun.value.status = 'success'
+      }
+      
+      // Save to database (even if invalid, for debugging)
       await saveTestRun(currentTestRun.value)
       
       // Add to history
       testHistory.value.unshift({ ...currentTestRun.value })
     }
-    executionStatus.value = 'success'
+    executionStatus.value = output.isValid === false ? 'error' : 'success'
   }
 
   /**
