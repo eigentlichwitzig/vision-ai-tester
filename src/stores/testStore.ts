@@ -6,7 +6,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { TestRun, TestParameters, TestInput, PipelineType } from '@/types/models'
-import { saveTestRun, getTestRuns, getTestRun, deleteTestRun } from '@/db'
+import { saveTestRun, getTestRuns, getTestRun, deleteTestRun, getTestRunCount } from '@/db'
 
 /**
  * Test execution status
@@ -140,7 +140,9 @@ export const useTestStore = defineStore('test', () => {
   async function loadHistory(options?: {
     modelName?: string
     pipeline?: PipelineType
+    status?: TestRun['status']
     limit?: number
+    offset?: number
   }): Promise<void> {
     isLoading.value = true
     try {
@@ -148,6 +150,13 @@ export const useTestStore = defineStore('test', () => {
     } finally {
       isLoading.value = false
     }
+  }
+
+  /**
+   * Get the total count of test runs
+   */
+  async function getHistoryCount(): Promise<number> {
+    return await getTestRunCount()
   }
 
   /**
@@ -202,6 +211,7 @@ export const useTestStore = defineStore('test', () => {
     cancelExecution,
     resetExecution,
     loadHistory,
+    getHistoryCount,
     loadTestRun,
     removeTestRun,
     clearCurrentTest

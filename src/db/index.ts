@@ -4,19 +4,13 @@
  */
 
 import Dexie, { type Table } from 'dexie'
-import type { TestRun, JsonSchema } from '@/types/models'
+import type { TestRun, JsonSchema, StoredFile } from '@/types/models'
+import { base64ToBlob, blobToBase64 } from '@/utils/base64'
 
 /**
- * File storage record for large files
+ * Re-export StoredFile for backward compatibility
  */
-export interface FileRecord {
-  id: string
-  name: string
-  mimeType: string
-  size: number
-  content: string  // Base64 encoded content
-  createdAt: Date
-}
+export type { StoredFile }
 
 /**
  * Stored test run with serializable date
@@ -30,7 +24,7 @@ export interface StoredTestRun extends Omit<TestRun, 'timestamp'> {
  */
 class VisionAITesterDB extends Dexie {
   testRuns!: Table<StoredTestRun, string>
-  files!: Table<FileRecord, string>
+  files!: Table<StoredFile, string>
   schemas!: Table<JsonSchema, string>
 
   constructor() {
@@ -39,7 +33,7 @@ class VisionAITesterDB extends Dexie {
     // Define database schema
     this.version(1).stores({
       testRuns: 'id, timestamp, modelName, pipeline, status, [modelName+pipeline]',
-      files: 'id, name, createdAt',
+      files: 'id, testRunId, size',
       schemas: 'id, name'
     })
   }
@@ -71,32 +65,98 @@ export function fromStoredTestRun(stored: StoredTestRun): TestRun {
 }
 
 /**
+ * Large file threshold (5MB)
+ */
+const LARGE_FILE_THRESHOLD = 5 * 1024 * 1024
+
+/**
  * Save a test run to the database
+ * Large files (>5MB) are stored separately as blobs
  */
 export async function saveTestRun(testRun: TestRun): Promise<string> {
-  const stored = toStoredTestRun(testRun)
-  await db.testRuns.put(stored)
-  return testRun.id
+  try {
+    const fileSize = testRun.input.size
+
+    // Create a modifiable copy for storage
+    let runToStore = testRun
+
+    // Check if file is large (>5MB) and has base64 content
+    if (fileSize > LARGE_FILE_THRESHOLD && testRun.input.base64Content) {
+      // Store file separately
+      const fileId = crypto.randomUUID()
+      const blob = base64ToBlob(testRun.input.base64Content, testRun.input.mimeType)
+
+      await db.files.add({
+        id: fileId,
+        testRunId: testRun.id,
+        fileName: testRun.input.fileName,
+        mimeType: testRun.input.mimeType,
+        size: fileSize,
+        blob,
+        createdAt: new Date()
+      })
+
+      // Replace base64 with reference in a copy
+      runToStore = {
+        ...testRun,
+        input: {
+          ...testRun.input,
+          fileRef: fileId,
+          base64Content: ''  // Clear base64 content
+        }
+      }
+    }
+
+    // Save test run
+    const stored = toStoredTestRun(runToStore)
+    await db.testRuns.put(stored)
+
+    console.log(`Saved test run ${testRun.id}`)
+    return testRun.id
+  } catch (error) {
+    console.error('Failed to save test run:', error)
+    throw error
+  }
 }
 
 /**
  * Get a test run by ID
+ * Loads large file content if stored separately
  */
 export async function getTestRun(id: string): Promise<TestRun | undefined> {
   const stored = await db.testRuns.get(id)
-  return stored ? fromStoredTestRun(stored) : undefined
+  
+  if (!stored) return undefined
+
+  const testRun = fromStoredTestRun(stored)
+
+  // Load large file if stored separately
+  if (testRun.input.fileRef) {
+    const file = await db.files.get(testRun.input.fileRef)
+    if (file) {
+      testRun.input.base64Content = await blobToBase64(file.blob)
+    }
+  }
+
+  return testRun
 }
 
 /**
  * Get all test runs, optionally filtered
+ * Note: Does NOT load large file content - use getTestRun for full data
  */
 export async function getTestRuns(options?: {
   modelName?: string
   pipeline?: TestRun['pipeline']
   status?: TestRun['status']
   limit?: number
+  offset?: number
 }): Promise<TestRun[]> {
   let query = db.testRuns.orderBy('timestamp').reverse()
+
+  if (options?.offset) {
+    query = query.offset(options.offset)
+  }
   
   if (options?.limit) {
     query = query.limit(options.limit)
@@ -115,16 +175,33 @@ export async function getTestRuns(options?: {
 }
 
 /**
- * Delete a test run by ID
+ * Get total count of test runs
+ */
+export async function getTestRunCount(): Promise<number> {
+  return await db.testRuns.count()
+}
+
+/**
+ * Delete a test run by ID and its associated files
  */
 export async function deleteTestRun(id: string): Promise<void> {
+  const testRun = await db.testRuns.get(id)
+
+  if (!testRun) return
+
+  // Delete associated file if exists
+  if (testRun.input.fileRef) {
+    await db.files.delete(testRun.input.fileRef)
+  }
+
+  // Delete test run
   await db.testRuns.delete(id)
 }
 
 /**
  * Save a file to the database
  */
-export async function saveFile(file: FileRecord): Promise<string> {
+export async function saveFile(file: StoredFile): Promise<string> {
   await db.files.put(file)
   return file.id
 }
@@ -132,7 +209,7 @@ export async function saveFile(file: FileRecord): Promise<string> {
 /**
  * Get a file by ID
  */
-export async function getFile(id: string): Promise<FileRecord | undefined> {
+export async function getFile(id: string): Promise<StoredFile | undefined> {
   return db.files.get(id)
 }
 
