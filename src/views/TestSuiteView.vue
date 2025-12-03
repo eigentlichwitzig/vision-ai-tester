@@ -3,11 +3,16 @@ import { ref } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseSlider from '@/components/base/BaseSlider.vue'
+import PipelineSelector from '@/components/config/PipelineSelector.vue'
+import ModelSelector from '@/components/config/ModelSelector.vue'
+import { useConfigStore } from '@/stores/configStore'
 
 // Demo state
 const sliderValue = ref(50)
 const temperatureValue = ref(0.7)
 const isLoading = ref(false)
+
+const configStore = useConfigStore()
 
 const handleButtonClick = () => {
   isLoading.value = true
@@ -21,6 +26,41 @@ const handleButtonClick = () => {
   <div class="min-h-screen bg-gray-50 p-8">
     <div class="max-w-7xl mx-auto">
       <h1 class="text-3xl font-bold text-gray-900 mb-6">Vision AI Tester</h1>
+
+      <!-- Pipeline and Model Selection Demo -->
+      <div class="space-y-6 mb-8">
+        <PipelineSelector />
+
+        <BaseCard title="Model Configuration" subtitle="Select models based on your chosen pipeline">
+          <div class="grid gap-6 md:grid-cols-2">
+            <!-- Direct Multimodal Pipeline Models -->
+            <div v-if="configStore.selectedPipeline === 'direct-multimodal'">
+              <ModelSelector
+                v-model="configStore.selectedModel"
+                model-type="vision"
+                label="Vision Model"
+                placeholder="Select a vision model"
+              />
+            </div>
+
+            <!-- OCR → Parse Pipeline Models -->
+            <template v-else>
+              <ModelSelector
+                v-model="configStore.selectedOcrModel"
+                model-type="ocr"
+                label="OCR Model"
+                placeholder="Select an OCR model"
+              />
+              <ModelSelector
+                v-model="configStore.selectedParseModel"
+                model-type="parse"
+                label="Parse Model"
+                placeholder="Select a parse model"
+              />
+            </template>
+          </div>
+        </BaseCard>
+      </div>
 
       <!-- Base Components Demo -->
       <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
