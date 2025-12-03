@@ -77,6 +77,9 @@ export async function saveTestRun(testRun: TestRun): Promise<string> {
   try {
     const fileSize = testRun.input.size
 
+    // Create a modifiable copy for storage
+    let runToStore = testRun
+
     // Check if file is large (>5MB) and has base64 content
     if (fileSize > LARGE_FILE_THRESHOLD && testRun.input.base64Content) {
       // Store file separately
@@ -93,8 +96,8 @@ export async function saveTestRun(testRun: TestRun): Promise<string> {
         createdAt: new Date()
       })
 
-      // Replace base64 with reference in a copy of the test run
-      testRun = {
+      // Replace base64 with reference in a copy
+      runToStore = {
         ...testRun,
         input: {
           ...testRun.input,
@@ -105,7 +108,7 @@ export async function saveTestRun(testRun: TestRun): Promise<string> {
     }
 
     // Save test run
-    const stored = toStoredTestRun(testRun)
+    const stored = toStoredTestRun(runToStore)
     await db.testRuns.put(stored)
 
     console.log(`Saved test run ${testRun.id}`)
