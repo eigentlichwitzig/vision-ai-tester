@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onUnmounted } from 'vue'
 
 interface Props {
   modelValue: string
@@ -52,6 +52,13 @@ const handleInput = (event: Event) => {
     emit('update:modelValue', localValue.value)
   }, 150)
 }
+
+// Cleanup debounce timeout on unmount
+onUnmounted(() => {
+  if (debounceTimeout) {
+    clearTimeout(debounceTimeout)
+  }
+})
 
 const charCount = computed(() => localValue.value.length)
 
