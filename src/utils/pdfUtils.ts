@@ -51,28 +51,21 @@ export function isValidPdf(base64String: string): boolean {
 }
 
 /**
- * Get page count from PDF using pdf.js
- * This is an async operation that loads the PDF
+ * Get page count from PDF
  * 
- * Note: This function requires the @tato30/vue-pdf library which uses pdf.js internally.
- * The page count will be determined by loading the PDF document.
+ * Note: This function is deprecated. Use the PdfPreview component which leverages
+ * the usePDF composable from @tato30/vue-pdf to get the page count automatically.
+ * The page count is available via the 'pages' ref returned by usePDF.
  * 
- * @param dataUri - Data URI string for the PDF
- * @returns Promise with the page count, or 0 on error
+ * @deprecated Use PdfPreview component and usePDF composable instead
+ * @param _dataUri - Data URI string for the PDF (unused)
+ * @returns Always returns estimated count based on estimatePdfPageCount
  */
-export async function getPdfPageCount(dataUri: string): Promise<number> {
-  try {
-    // We use the usePDF composable from @tato30/vue-pdf which handles the PDF loading
-    // The actual page count will be determined by the Vue component
-    // This utility function is provided for cases where we need the count outside the component
-    
-    // For now, we return 0 as a placeholder
-    // The actual implementation uses the VuePDF component's built-in page detection
-    // which is handled in PdfPreview.vue
-    return 0
-  } catch {
-    return 0
-  }
+export function getPdfPageCount(_dataUri: string): number {
+  // Page count detection is handled by the VuePDF component's usePDF composable
+  // which provides the 'pages' ref after loading the PDF document.
+  // This utility is kept for API compatibility but should not be used directly.
+  return 0
 }
 
 /**

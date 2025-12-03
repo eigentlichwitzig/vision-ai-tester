@@ -15,7 +15,7 @@ interface Props {
   fileName: string
   /** Maximum display width in pixels */
   maxWidth?: number
-  /** Maximum display height?: number */
+  /** Maximum display height in pixels */
   maxHeight?: number
 }
 
