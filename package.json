@@ -19,8 +19,8 @@
     "dexie": "^4.0.11",
     "primevue": "^4.3.3",
     "primeicons": "^7.0.0",
-    "@tato30/vue-pdf": "^1.12.4",
-    "json-editor-vue": "^0.19.1",
+    "@tato30/vue-pdf": "^1.11.5",
+    "json-editor-vue": "^0.18.1",
     "jsondiffpatch": "^0.6.0"
   },
   "devDependencies": {
