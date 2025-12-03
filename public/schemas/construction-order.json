@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Construction Order",
+  "type": "object",
+  "properties": {
+    "orderNumber": {
+      "type": "string",
+      "description": "Unique order identifier"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Order date in YYYY-MM-DD format"
+    },
+    "projectName": {
+      "type": "string",
+      "description": "Name of the construction project"
+    },
+    "contractor": {
+      "type": "string",
+      "description": "Contractor company name"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "unitPrice": {
+            "type": "number"
+          },
+          "totalPrice": {
+            "type": "number"
+          }
+        },
+        "required": ["description", "quantity"]
+      }
+    },
+    "totalAmount": {
+      "type": "number",
+      "description": "Total order amount"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes or comments"
+    }
+  },
+  "required": ["orderNumber", "date"]
+}

@@ -1,0 +1,37 @@
+{
+  "name": "vision-ai-tester",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Browser-based application for testing local Ollama multimodal models on construction documents",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore"
+  },
+  "dependencies": {
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "pinia": "^2.3.0",
+    "pinia-plugin-persistedstate": "^4.2.0",
+    "dexie": "^4.0.11",
+    "primevue": "^4.3.3",
+    "primeicons": "^7.0.0",
+    "@tato30/vue-pdf": "^1.12.4",
+    "json-editor-vue": "^0.19.1",
+    "jsondiffpatch": "^0.6.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^6.0.7",
+    "vue-tsc": "^2.1.10",
+    "typescript": "~5.6.3",
+    "@vue/tsconfig": "^0.7.0",
+    "tailwindcss": "^3.4.17",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "@types/node": "^22.10.5"
+  }
+}

@@ -1,0 +1,462 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Initialize Vue 3 + Vite + TypeScript Project",
+        "description": "Set up the base frontend project using Vue 3 framework with Vite as the build tool and TypeScript for type safety.",
+        "details": "Use official Vue scaffolding tools (e.g., create-vue) to initialize the project with Vue 3, Vite, and TypeScript support. Configure project structure as per PRD, including src/, public/, and environment files.",
+        "testStrategy": "Verify project builds successfully and runs on localhost with default Vue welcome page. Confirm TypeScript compilation without errors.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Set Up Pinia State Management with Persisted State",
+        "description": "Integrate Pinia for global state management with persisted state for user preferences and configurations.",
+        "details": "Install Pinia via npm. Create Pinia root store and integrate it into main.ts. Implement persisted state plugin to save user preferences across sessions. Define initial stores for test runs, config, and schema management.",
+        "testStrategy": "Test that state changes persist after page reload. Verify Pinia devtools integration and state updates in components.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Configure Dexie.js for IndexedDB Storage",
+        "description": "Set up Dexie.js to manage IndexedDB for storing test runs, uploaded files, and metadata locally.",
+        "details": "Define Dexie database schema matching TestRun data model and file storage requirements. Implement database initialization and CRUD operations for test runs and files. Handle large file storage with blob references.",
+        "testStrategy": "Test saving, retrieving, updating, and deleting test runs and files. Verify large files are stored separately and referenced correctly.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement Ollama API Client with TypeScript Types",
+        "description": "Create a unified API client to communicate with the local Ollama server for model inference requests.",
+        "details": "Develop API client in src/api/ollama.ts using fetch or axios. Implement request formatting per PRD, including base64 image stripping and JSON schema embedding. Define TypeScript interfaces for requests and responses.",
+        "testStrategy": "Mock Ollama server responses and verify client sends correct payloads and handles responses and errors properly.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Develop Base UI Components (Button, Card, Slider)",
+        "description": "Create reusable UI primitives using Vue 3 and Tailwind CSS for consistent styling and interaction.",
+        "details": "Implement BaseButton.vue, BaseCard.vue, and BaseSlider.vue components with props for customization. Ensure accessibility and responsiveness. Use Tailwind CSS utility classes for styling.",
+        "testStrategy": "Unit test components for rendering, props handling, and user interaction events.",
+        "priority": "medium",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement File Upload with Drag-and-Drop and Base64 Conversion",
+        "description": "Enable users to upload PDF and image files via drag-and-drop or file picker, converting files to base64 for model input.",
+        "details": "Create DropZone.vue component supporting PDF, JPG, PNG formats up to 20MB. Convert uploaded files to base64 without data URI prefix. Detect large files (>1MB) and handle storage strategy accordingly.",
+        "testStrategy": "Test uploading various file types and sizes. Verify base64 conversion correctness and large file detection messages.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          5
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design and Implement Drag-and-Drop UI in DropZone.vue",
+            "description": "Create the DropZone.vue component with a user-friendly drag-and-drop interface and file picker support for PDF, JPG, and PNG files.",
+            "dependencies": [],
+            "details": "Develop the Vue 3 DropZone component using the Composition API, implementing drag-and-drop events and a fallback file picker. Provide visual feedback for drag state and file selection. Ensure accessibility and responsiveness.",
+            "status": "pending",
+            "testStrategy": "Manually test drag-and-drop and file picker interactions with supported file types."
+          },
+          {
+            "id": 2,
+            "title": "Implement File Type and Size Validation",
+            "description": "Validate uploaded files to accept only PDF, JPG, and PNG formats and enforce a maximum file size of 20MB.",
+            "dependencies": [
+              1
+            ],
+            "details": "Add validation logic in DropZone.vue to check file MIME types and extensions against allowed formats. Reject files exceeding 20MB with user-friendly error messages. Integrate validation with drag-and-drop and file picker inputs.",
+            "status": "pending",
+            "testStrategy": "Test uploading various file types and sizes, verifying acceptance and rejection behavior."
+          },
+          {
+            "id": 3,
+            "title": "Convert Uploaded Files to Base64 Without Data URI Prefix",
+            "description": "Implement functionality to convert accepted files to base64 strings excluding the data URI prefix for model input compatibility.",
+            "dependencies": [
+              2
+            ],
+            "details": "Use FileReader API to read files as base64 strings. Strip the 'data:*/*;base64,' prefix from the result before storing or emitting the base64 data. Ensure conversion works for all supported file types and sizes.",
+            "status": "pending",
+            "testStrategy": "Verify base64 output correctness by comparing with known base64 encodings and ensure prefix is removed."
+          },
+          {
+            "id": 4,
+            "title": "Detect Large Files and Implement Conditional Storage Strategy",
+            "description": "Detect files larger than 1MB and handle them differently according to the storage strategy requirements.",
+            "dependencies": [
+              3
+            ],
+            "details": "Add logic to check file size after validation. For files >1MB, implement alternative storage or processing strategies (e.g., chunking, temporary storage) as specified. Provide user feedback if necessary.",
+            "status": "pending",
+            "testStrategy": "Test uploading files just below and above 1MB to confirm detection and correct handling."
+          },
+          {
+            "id": 5,
+            "title": "Integrate and Test Complete File Upload Workflow",
+            "description": "Integrate all components and validate the full upload process from drag-and-drop to base64 conversion and large file handling.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Combine UI, validation, conversion, and storage logic into a cohesive workflow. Ensure events and data flow correctly between components. Handle edge cases and error states gracefully.",
+            "status": "pending",
+            "testStrategy": "Perform end-to-end testing with various file types and sizes, verifying UI behavior, data correctness, and error handling."
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Generate PDF and Image Previews with Lazy Loading",
+        "description": "Render previews for uploaded files: first page for PDFs and thumbnails for images, with lazy loading for large files.",
+        "details": "Use @tato30/vue-pdf for PDF rendering and native image elements for JPG/PNG. Implement lazy loading for files >5MB. Show loading indicators and large file warnings as per UX requirements.",
+        "testStrategy": "Upload PDFs and images of different sizes and verify previews render within performance targets (<3s for PDFs, <1s for images). Check lazy loading triggers correctly.",
+        "priority": "medium",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement Pipeline Selection and Model Selector Components",
+        "description": "Allow users to select between OCR→Parse and Direct multimodal pipelines and choose appropriate models for each pipeline.",
+        "details": "Create PipelineSelector.vue and ModelSelector.vue components. Support selecting OCR model (deepseek-ocr, minicpm-v) and parsing model (qwen2.5vl, qwen2.5, llava). Enforce model compatibility rules.",
+        "testStrategy": "Verify UI updates on selection changes. Validate model options correspond to selected pipeline. Test state updates in Pinia store.",
+        "priority": "medium",
+        "dependencies": [
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Build Parameter Configuration Panel with Prompt Editors",
+        "description": "Provide UI controls for temperature, max tokens, context window, and editable system/user prompts.",
+        "details": "Develop ParameterPanel.vue with sliders and textareas for parameters. Initialize with default prompts from PRD. Bind inputs to Pinia store for reactive updates.",
+        "testStrategy": "Test parameter changes reflect in store. Validate prompt text areas accept and display default and user-edited content.",
+        "priority": "medium",
+        "dependencies": [
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement Direct Multimodal Pipeline Execution",
+        "description": "Send base64 image directly to multimodal model (qwen2.5vl) with schema for structured JSON extraction.",
+        "details": "In useTestRunner.ts composable, implement API call to Ollama with direct multimodal pipeline parameters. Handle response parsing, JSON schema validation, and error handling.",
+        "testStrategy": "Mock Ollama responses and verify correct request payloads. Validate JSON output against schema and handle errors gracefully.",
+        "priority": "high",
+        "dependencies": [
+          4,
+          6,
+          8,
+          9
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement API Call with Base64 Image Payload",
+            "description": "Develop the function in useTestRunner.ts to send a base64-encoded image directly to the Ollama multimodal model (qwen2.5vl) using the specified pipeline parameters.",
+            "dependencies": [],
+            "details": "Encode the image to base64 format, construct the API request payload according to Ollama's multimodal pipeline requirements, and send the request to the Ollama server endpoint. Ensure the payload includes the correct schema for structured JSON extraction.",
+            "status": "pending",
+            "testStrategy": "Mock Ollama API to verify the request payload contains the correct base64 image and parameters."
+          },
+          {
+            "id": 2,
+            "title": "Parse and Validate API Response Against JSON Schema",
+            "description": "Implement response handling logic to parse the API response and validate it strictly against the predefined JSON schema for structured data extraction.",
+            "dependencies": [
+              1
+            ],
+            "details": "After receiving the response from Ollama, parse the JSON content and apply schema validation to ensure the extracted data conforms to the expected structure. Handle cases where the response does not match the schema.",
+            "status": "pending",
+            "testStrategy": "Use mocked API responses with valid and invalid JSON to test parsing and schema validation robustness."
+          },
+          {
+            "id": 3,
+            "title": "Implement Comprehensive Error Handling for API Communication",
+            "description": "Add robust error handling for network issues, invalid responses, schema validation failures, and other potential errors during the API call and response processing.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Detect and handle errors such as connection failures, timeouts, malformed responses, and schema validation errors. Provide meaningful error messages and fallback behaviors to maintain application stability.",
+            "status": "pending",
+            "testStrategy": "Simulate network errors, invalid responses, and schema mismatches to verify error detection and user-friendly error reporting."
+          },
+          {
+            "id": 4,
+            "title": "Integrate and Test the Complete Multimodal Pipeline Execution",
+            "description": "Combine the API call, response parsing, schema validation, and error handling into the useTestRunner.ts composable and perform end-to-end testing of the direct multimodal pipeline execution.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Integrate all implemented components ensuring smooth data flow and state management. Test the full pipeline with various base64 images and validate the final JSON output. Confirm error handling triggers appropriately under failure scenarios.",
+            "status": "pending",
+            "testStrategy": "Perform integration tests with mocked and real Ollama responses, validate JSON outputs, and verify error handling and recovery mechanisms."
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Implement OCR→Parse Pipeline Execution",
+        "description": "Implement two-step workflow: OCR model extracts text, then LLM parses text into structured JSON.",
+        "details": "First, send image to OCR model (deepseek-ocr or minicpm-v) via Ollama API. Then send extracted text with schema to parsing model. Validate outputs and combine results.",
+        "testStrategy": "Test sequential API calls with mocked responses. Verify intermediate OCR text is stored and final JSON validated.",
+        "priority": "high",
+        "dependencies": [
+          4,
+          6,
+          8,
+          9
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement OCR Model API Call via Ollama",
+            "description": "Develop the function to send an image to the OCR model (deepseek-ocr or minicpm-v) using the Ollama API and receive extracted text.",
+            "dependencies": [],
+            "details": "Create an API client method that formats the image input (base64 or appropriate encoding), sends a request to the Ollama server specifying the OCR model, and handles the response containing raw extracted text. Include error handling and retries as needed.",
+            "status": "pending",
+            "testStrategy": "Mock Ollama API responses to verify correct request formation and proper extraction of OCR text from responses."
+          },
+          {
+            "id": 2,
+            "title": "Implement Parsing Model API Call with Extracted Text and Schema",
+            "description": "Develop the function to send the OCR-extracted text along with a JSON schema to the parsing model via Ollama API to obtain structured JSON output.",
+            "dependencies": [
+              1
+            ],
+            "details": "Format the OCR text and schema into the required request payload, send it to the parsing model endpoint on Ollama, and parse the structured JSON response. Handle errors and validate response format.",
+            "status": "pending",
+            "testStrategy": "Mock parsing model responses to verify correct payload construction and JSON schema validation of outputs."
+          },
+          {
+            "id": 3,
+            "title": "Design Intermediate Data Handling and Storage",
+            "description": "Implement mechanisms to store and manage intermediate OCR text results between the two API calls for traceability and debugging.",
+            "dependencies": [
+              1
+            ],
+            "details": "Store the OCR text output in a temporary or persistent storage solution after the first API call. Ensure data integrity and accessibility for the subsequent parsing step. Include timestamping or run identifiers for organization.",
+            "status": "pending",
+            "testStrategy": "Verify that OCR text is correctly saved and retrievable before parsing call; test with simulated data flows."
+          },
+          {
+            "id": 4,
+            "title": "Implement Output Validation and Error Handling",
+            "description": "Create validation logic to verify the correctness and completeness of OCR and parsing outputs, and handle errors gracefully.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Validate OCR text for non-empty, expected format; validate parsed JSON against the schema. Implement fallback or retry strategies if validation fails. Log errors and provide meaningful messages for debugging.",
+            "status": "pending",
+            "testStrategy": "Test with valid and invalid OCR and parsing outputs; simulate errors and verify that validation and error handling behave as expected."
+          },
+          {
+            "id": 5,
+            "title": "Combine OCR and Parsing Results into Final Output",
+            "description": "Develop the logic to merge validated OCR text and parsed JSON into a unified final result for downstream consumption.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Aggregate the intermediate OCR text and the structured JSON output into a single data structure or file. Ensure consistency and completeness. Prepare the final output format for further processing or storage.",
+            "status": "pending",
+            "testStrategy": "Test combined output correctness with various valid inputs; verify that final output meets expected format and contains all necessary data."
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Validate JSON Output Against Schema and Show Validation Errors",
+        "description": "Ensure model outputs conform strictly to the provided JSON schema and display validation errors to users.",
+        "details": "Use JSON schema validator (e.g., AJV) to validate parsed JSON. Integrate validation results into UI with clear error messages and highlights.",
+        "testStrategy": "Test with valid and invalid JSON outputs. Confirm errors are shown and prevent saving invalid runs.",
+        "priority": "high",
+        "dependencies": [
+          10,
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Save and Load Test Runs in IndexedDB",
+        "description": "Persist completed test runs with metadata locally using Dexie.js and enable loading past runs for review.",
+        "details": "Implement save operation after successful test run completion. Provide API to query and load test runs by ID or filters. Handle large file references properly.",
+        "testStrategy": "Test saving multiple runs, retrieving them, and verifying data integrity including metadata and outputs.",
+        "priority": "high",
+        "dependencies": [
+          3,
+          10,
+          11,
+          12
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Save Operation for Completed Test Runs",
+            "description": "Develop functionality to save completed test runs along with their metadata into IndexedDB using Dexie.js after test completion.",
+            "dependencies": [],
+            "details": "Use Dexie.js to create a transaction that stores the test run data and associated metadata atomically. Ensure data integrity and handle errors such as quota exceeded. Confirm that large file references are stored as blobs or separate entries with references.",
+            "status": "pending",
+            "testStrategy": "Test saving multiple test runs with various metadata and verify data is correctly persisted and retrievable."
+          },
+          {
+            "id": 2,
+            "title": "Develop Query API for Retrieving Test Runs",
+            "description": "Create an API to query saved test runs by ID or filter criteria such as date, status, or metadata fields.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement Dexie.js queries using indexes on metadata fields to efficiently retrieve test runs. Support filtering, sorting, and pagination as needed. Ensure queries handle large datasets gracefully.",
+            "status": "pending",
+            "testStrategy": "Test querying by ID and various filters, verifying correct and complete results are returned."
+          },
+          {
+            "id": 3,
+            "title": "Implement Load API to Retrieve and Deserialize Test Runs",
+            "description": "Build an API to load a selected test run from IndexedDB, including metadata and associated large file references, for review or replay.",
+            "dependencies": [
+              2
+            ],
+            "details": "Retrieve test run data and associated large files or blobs from IndexedDB. Deserialize and reconstruct the test run object in memory. Handle cases where large files are stored separately and referenced by ID or blob keys.",
+            "status": "pending",
+            "testStrategy": "Test loading saved test runs with large files, verifying data integrity and correct reconstruction of the test run."
+          },
+          {
+            "id": 4,
+            "title": "Manage Large File References in IndexedDB Storage",
+            "description": "Design and implement a strategy to handle large file references within test runs, ensuring efficient storage and retrieval without exceeding quota limits.",
+            "dependencies": [
+              1
+            ],
+            "details": "Store large files as separate blob entries in IndexedDB and reference them from test runs by ID. Implement logic to detect large files and store them accordingly. Use StorageManager API to request persistent storage if possible to avoid data loss.",
+            "status": "pending",
+            "testStrategy": "Test uploading and saving large files (>1MB), verify they are stored separately and referenced correctly, and test retrieval and deletion scenarios."
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "title": "Develop JSON Viewer and Raw Response Display Components",
+        "description": "Create UI components to display parsed JSON in interactive tree view and raw model response as plain text.",
+        "details": "Use json-editor-vue for JSON viewing with expand/collapse. Implement RawResponse.vue to show raw text with syntax highlighting. Bind to selected test run data.",
+        "testStrategy": "Test rendering of complex JSON objects and raw text. Verify UI responsiveness and correctness.",
+        "priority": "medium",
+        "dependencies": [
+          5,
+          13,
+          12
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Implement JSON Diffing and Side-by-Side Comparison View",
+        "description": "Enable visual comparison of two test runs using jsondiffpatch with side-by-side diff highlighting.",
+        "details": "Create ComparisonView.vue using jsondiffpatch library. Allow user to select two runs and display differences with color-coded highlights and metadata.",
+        "testStrategy": "Test diffing with runs having minor and major differences. Verify UI updates and diff accuracy.",
+        "priority": "medium",
+        "dependencies": [
+          13,
+          14
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Implement Ollama Connectivity Check with Clear Error Handling",
+        "description": "Check Ollama server availability on startup and before test runs, showing actionable error messages if unreachable.",
+        "details": "In useOllamaApi.ts, implement ping or health check endpoint call. Display error alerts with guidance if connection fails. Handle CORS misconfiguration errors.",
+        "testStrategy": "Simulate Ollama offline and CORS errors. Verify error messages appear and prevent test run initiation.",
+        "priority": "high",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Implement Loading States, Progress Indicators, and Cancel Option",
+        "description": "Show loading spinners and step progress during model inference with ability to cancel long-running tests.",
+        "details": "Add reactive loading states in useTestRunner.ts. Display progress messages for OCR pipeline steps. Implement cancel button to abort requests and update status.",
+        "testStrategy": "Test UI during simulated long-running calls. Verify cancel stops inference and updates UI accordingly.",
+        "priority": "medium",
+        "dependencies": [
+          10,
+          11,
+          16
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Implement Test History Browser with Filters and Metadata Display",
+        "description": "Provide UI to browse past test runs with filtering options and display metadata such as duration, tokens, and timestamps.",
+        "details": "Create HistoryView.vue with list or table of test runs from IndexedDB. Implement filters by date, model, pipeline, and status. Show metadata summary per run.",
+        "testStrategy": "Test loading and filtering large number of runs (100+). Verify metadata correctness and UI responsiveness.",
+        "priority": "medium",
+        "dependencies": [
+          13,
+          16
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-12-02T20:09:57.396Z",
+      "updated": "2025-12-02T20:09:57.396Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

@@ -1,0 +1,504 @@
+# Vision AI Tester -- Product Requirements Document (Final)
+
+## Executive Summary
+
+Build a lightweight browser-based application (Vue 3 + Pinia) that allows engineers and QA teams to rapidly test local Ollama multimodal models on construction-related documents. The system supports two pipelines—Vision Model OCR → LLM parsing and direct multimodal extraction—and outputs deterministic structured JSON for comparison, debugging, and quality evaluation. Test runs are stored locally via IndexedDB for reproducibility.
+
+## Goals
+
+- Reduce manual data extraction time from construction documents
+- Achieve high accuracy for key fields on documents
+- Ensure deterministic outputs (temperature=0) and high JSON validity
+- Provide reproducible test runs with JSON diffing and metadata
+
+## User Stories
+
+1. As a tester, I want to upload a PDF/image so the system can analyze it
+2. As a developer, I want to compare two extraction pipelines on the same file
+3. As a user, I want confidence that the system is working with clear errors if Ollama is unreachable
+4. As a developer, I want to store and review past test runs to track improvements
+
+## Core Features (MVP)
+
+- Upload files (PDF/JPG/PNG), convert to base64, generate previews
+- Run two pipelines:
+  1. **Vision OCR → LLM**: Use vision model (Deepseek OCR or MiniCPM-V) to extract text, then send text to LLM for structured parsing
+  2. **Direct multimodal**: Use multimodal vision model (Qwen2.5-VL) to directly extract structured data from image
+- Strict JSON schema validation/output
+- Local storage of test runs with metadata via Dexie.js
+- JSON diffing (jsondiffpatch) to compare results
+- Model selection and system/user prompt configuration
+- Ollama connectivity checks with clear guidance
+
+## Next Features (Post-MVP)
+
+- Manual corrections with two-click UI
+- Golden file management and baseline comparison
+- Schema editor & versioning tools
+- Export capabilities (CSV/JSON)
+- Model presets and pipeline presets
+- Batch processing for multiple documents
+
+## Technical Architecture
+
+### Frontend
+
+- **Framework**: Vue 3 + Vite + TypeScript
+- **State Management**: Pinia with persisted state for preferences
+- **Storage**: Dexie.js for IndexedDB (test runs, files)
+- **Styling**: Tailwind CSS
+- **UI Components**: PrimeVue for complex components (Splitter, FileUpload, TreeTable)
+
+### Backend
+
+- None for MVP; works with local browser + Ollama
+- Optional server mode later for team collaboration
+
+### External Dependencies
+
+- **Ollama**: Local server for model inference (localhost:11434)
+- **jsondiffpatch**: For JSON comparison and diff visualization
+- **@tato30/vue-pdf**: For PDF preview rendering
+- **json-editor-vue**: For interactive JSON viewing
+
+## Supported Models
+
+### OCR Pipeline (Step 1: Text Extraction)
+- **deepseek-ocr** (primary for OCR)
+- **minicpm-v** (excellent OCR performance, 1.8M pixel support)
+
+### Parsing Pipeline (Step 2 for OCR pipeline, or single step for direct)
+- **qwen2.5vl:7b** (primary recommendation, 125K context, multilingual)
+- **qwen2.5:7b** (for text-only parsing after OCR)
+- **llava:13b** (alternative)
+
+**Minimum Requirements**: 8GB VRAM for 7B models, 12GB for 13B models
+
+## Data Flow
+
+1. User uploads file → stored in IndexedDB (as blob if >1MB)
+2. File converted to base64 for model input
+3. User selects pipeline & model(s)
+4. **Pipeline 1 (OCR → Parse)**:
+   - Send image to OCR vision model (deepseek-ocr/minicpm-v) → extract plain text
+   - Send extracted text to LLM with schema → get structured JSON
+5. **Pipeline 2 (Direct Multimodal)**:
+   - Send image directly to multimodal model (qwen2.5vl) with schema → get structured JSON
+6. Response validated → saved as TestRun object with metadata
+7. User views diff, raw response, and file preview
+
+## JSON Schema (Simplified for MVP)
+
+```json
+{
+  "format": {
+    "type": "object",
+    "properties": {
+      "orderNumber": { "type": "string" },
+      "orderDate": { "type": "string" },
+      "customerName": { "type": "string" },
+      "customerAddress": {
+        "type": "object",
+        "properties": {
+          "street": { "type": "string" },
+          "city": { "type": "string" },
+          "postalCode": { "type": "string" }
+        }
+      },
+      "projectAddress": {
+        "type": "object",
+        "properties": {
+          "street": { "type": "string" },
+          "city": { "type": "string" },
+          "postalCode": { "type": "string" }
+        }
+      },
+      "lineItems": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "position": { "type": "string" },
+            "description": { "type": "string" },
+            "quantity": { "type": "number" },
+            "unit": { "type": "string" },
+            "unitPrice": { "type": "number" },
+            "totalPrice": { "type": "number" }
+          },
+          "required": ["description", "totalPrice"]
+        }
+      },
+      "subtotal": { "type": "number" },
+      "taxRate": { "type": "number" },
+      "taxAmount": { "type": "number" },
+      "totalAmount": { "type": "number" },
+      "currency": { "type": "string" }
+    },
+    "required": ["orderNumber", "orderDate", "lineItems", "totalAmount"]
+  }
+}
+```
+
+## TestRun Data Model
+
+```typescript
+interface TestRun {
+  id: string;                    // UUID
+  timestamp: Date;
+  modelName: string;             // e.g., "qwen2.5vl:7b"
+  pipeline: 'ocr-then-parse' | 'direct-multimodal';
+  ocrModel?: string;             // Only for ocr-then-parse pipeline
+  parameters: TestParameters;
+  input: TestInput;
+  output: TestOutput;
+  duration: number;              // milliseconds
+  status: 'success' | 'error' | 'cancelled';
+  tags?: string[];
+}
+
+interface TestParameters {
+  temperature: number;
+  maxTokens?: number;
+  numCtx?: number;
+  systemPrompt: string;
+  userPrompt: string;
+  schemaId?: string;
+}
+
+interface TestInput {
+  fileName: string;
+  fileType: 'pdf' | 'image';
+  mimeType: string;
+  size: number;
+  base64Content: string;         // Empty if stored separately
+  fileRef?: string;              // ID reference for large files
+  thumbnail?: string;
+}
+
+interface TestOutput {
+  raw: string;                   // Raw response from model
+  parsed?: object;               // Validated JSON object
+  ocrText?: string;              // Intermediate OCR output (if pipeline 1)
+  error?: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalDuration?: number;
+}
+```
+
+## Project Structure
+
+```
+vision-ai-tester/
+├── src/
+│   ├── api/                          # API client layer
+│   │   ├── index.ts                 # Unified API client
+│   │   ├── ollama.ts                # Ollama-specific endpoints
+│   │   └── types.ts                 # API request/response types
+│   ├── components/
+│   │   ├── base/                    # Reusable UI primitives
+│   │   │   ├── BaseButton.vue
+│   │   │   ├── BaseCard.vue
+│   │   │   └── BaseSlider.vue
+│   │   ├── upload/                  # File handling components
+│   │   │   ├── DropZone.vue
+│   │   │   ├── FilePreview.vue
+│   │   │   └── PdfRenderer.vue
+│   │   ├── config/                  # Configuration UI
+│   │   │   ├── ModelSelector.vue
+│   │   │   ├── PipelineSelector.vue
+│   │   │   ├── ParameterPanel.vue
+│   │   │   └── SchemaEditor.vue
+│   │   ├── results/                 # Output display
+│   │   │   ├── JsonViewer.vue
+│   │   │   ├── ResultCard.vue
+│   │   │   └── ComparisonView.vue
+│   │   └── layout/
+│   │       ├── SplitPane.vue
+│   │       └── AppHeader.vue
+│   ├── composables/                 # Vue composition functions
+│   │   ├── useOllamaApi.ts
+│   │   ├── useFileUpload.ts
+│   │   ├── useTestRunner.ts
+│   │   ├── useTestHistory.ts
+│   │   └── useJsonDiff.ts
+│   ├── db/                          # IndexedDB configuration
+│   │   └── index.ts                 # Dexie.js schema
+│   ├── stores/                      # Pinia state management
+│   │   ├── testStore.ts            # Test execution state
+│   │   ├── configStore.ts          # User preferences
+│   │   └── schemaStore.ts          # Schema management
+│   ├── types/                       # TypeScript definitions
+│   │   ├── models.ts               # TestRun, TestInput, etc.
+│   │   ├── ollama.ts               # Ollama API types
+│   │   └── index.ts                # Re-exports
+│   ├── utils/                       # Helper functions
+│   │   ├── base64.ts
+│   │   ├── validators.ts
+│   │   └── formatters.ts
+│   ├── views/                       # Page components
+│   │   ├── TestSuiteView.vue
+│   │   ├── HistoryView.vue
+│   │   └── CompareView.vue
+│   ├── App.vue
+│   ├── main.ts
+│   └── router.ts
+├── public/
+│   └── schemas/                     # Predefined schemas
+│       └── construction-order.json
+├── .env.development
+├── .env.production
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+└── README.md
+```
+
+### Key Architectural Decisions
+
+**Separation of Concerns:**
+- `api/` handles all Ollama communication
+- `composables/` contains reusable logic with Vue reactivity
+- `stores/` manages global state (Pinia)
+- `db/` abstracts IndexedDB operations (Dexie.js)
+- `components/` organized by feature domain
+
+**State Management Strategy:**
+- **Local component state**: UI-only concerns (dropdown open/closed)
+- **Composables**: Reusable logic with reactive state (API calls, file processing)
+- **Pinia stores**: Cross-component shared state (test runs, user config)
+- **IndexedDB**: Persistent storage (test history, large files)
+
+**Modular Design Principles:**
+- Each component has single responsibility
+- Composables are framework-agnostic (can be tested independently)
+- API layer can be swapped (e.g., replace Ollama with cloud service)
+- Schema definitions are JSON files (easy to modify without code changes)
+
+## UX Requirements
+
+### Main Interface Layout
+
+Split-pane layout with resizable panels:
+
+**Left Panel (35%)**:
+- File upload drop zone
+- File preview (thumbnail for images, first page for PDFs)
+- Pipeline selector (OCR→Parse vs. Direct)
+- Model selector(s) (one for direct, two for OCR pipeline)
+- Parameter controls (temperature, max tokens, context window)
+- System/user prompt editors
+- Schema selector
+- Run/Cancel buttons
+
+**Right Panel (65%)**:
+- Tabs:
+  - **JSON Output**: Interactive tree view of parsed results
+  - **Raw Response**: Plain text response from model
+  - **OCR Text**: Intermediate OCR output (Pipeline 1 only)
+  - **Comparison**: Side-by-side diff view
+- Test run metadata (duration, tokens, timestamp)
+- Export buttons (JSON, CSV)
+
+### User Flow
+
+1. **Upload**: Drag/drop or click to upload PDF/image
+2. **Configure**: Select pipeline, model(s), adjust parameters
+3. **Run**: Click "Run Test" → see loading indicator
+4. **Review**: View parsed JSON, check raw output, verify extraction
+5. **Compare**: Select previous run from history → see diff
+6. **Save**: Test automatically saved to IndexedDB
+
+### Loading & Error States
+
+- **Loading**: Show spinner with "Running {modelName}..." text
+- **Progress**: For OCR pipeline, show "Step 1/2: Extracting text..." then "Step 2/2: Parsing..."
+- **Success**: Green checkmark with duration
+- **Error**: Red alert with actionable message (e.g., "Ollama unreachable. Ensure Ollama is running on localhost:11434")
+
+### Large File Handling
+
+- Files >1MB: Show "Large file detected. Preview generation may take a moment..."
+- Files >5MB: Store separately in IndexedDB, lazy-load preview on demand
+- PDFs: Show first page as preview by default
+
+## Prompts
+
+### System Prompt (Default)
+
+```
+You are a structured data extraction assistant. Your task is to extract information from documents and output valid JSON that strictly conforms to the provided schema. 
+
+Rules:
+- Output ONLY valid JSON, no explanations or additional text
+- Use null for missing or unclear fields
+- Use ISO-8601 format for dates (YYYY-MM-DD)
+- Use numbers (not strings) for all numeric values
+- Preserve original text accuracy
+```
+
+### User Prompt (Default)
+
+```
+Extract all fields from this document according to the schema. Be precise and accurate.
+```
+
+### OCR Prompt (Pipeline 1, Step 1)
+
+```
+Extract all visible text from this document. Preserve the layout and structure. Output the text exactly as it appears.
+```
+
+## API Requirements
+
+### Ollama /api/chat Endpoint
+
+**Request Format:**
+```json
+{
+  "model": "qwen2.5vl:7b",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a structured extraction assistant..."
+    },
+    {
+      "role": "user",
+      "content": "Extract all fields from this document...",
+      "images": ["<base64-encoded-image-without-prefix>"]
+    }
+  ],
+  "format": { /* JSON Schema */ },
+  "stream": false,
+  "options": {
+    "temperature": 0,
+    "num_predict": 4096,
+    "num_ctx": 8192
+  }
+}
+```
+
+**CRITICAL**: Images must be base64-encoded WITHOUT the `data:image/jpeg;base64,` prefix. Strip this before sending.
+
+### CORS Configuration
+
+Ollama must be configured to allow browser requests:
+
+**Windows:**
+Add `OLLAMA_ORIGINS=http://localhost:5173` as environment variable, restart Ollama.
+
+For development, `OLLAMA_ORIGINS="*"` is acceptable.
+
+## Acceptance Criteria
+
+### Functional Requirements
+
+✅ User can upload PDF or image files up to 20MB
+✅ User can select between OCR→Parse and Direct pipelines
+✅ For OCR pipeline, user can choose separate OCR and parsing models
+✅ System displays file preview immediately after upload
+✅ Test runs complete with valid JSON output matching schema
+✅ Test runs are automatically saved to IndexedDB
+✅ User can view test history and load previous runs
+✅ User can compare two test runs with visual diff highlighting
+✅ System shows clear error messages when Ollama is unreachable
+✅ System validates JSON against schema and shows validation errors
+
+### Non-Functional Requirements
+
+⚡ Page load time: <2 seconds
+⚡ Test run display: <500ms (excluding model inference)
+⚡ File preview generation: <1 second for images, <3 seconds for PDFs
+⚡ History view: Load 100 previous runs in <1 second
+🎯 JSON validity: 95%+ of successful runs produce valid JSON
+🎯 Schema conformance: 100% of valid JSON matches schema structure
+
+### Error Handling Requirements
+
+❌ Clear error when Ollama is not running
+❌ Actionable guidance when CORS is misconfigured
+❌ Graceful handling of unsupported file types
+❌ Informative message when model is not pulled
+❌ Timeout after 5 minutes of inference with cancel option
+❌ Recovery suggestions for common OCR failures
+
+## Risks & Mitigations
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| **Ollama CORS issues** | High | Provide setup instructions in README, add connectivity check on startup |
+| **Large PDFs crash browser** | Medium | Implement file size limits (20MB), lazy-load previews, store blobs separately |
+| **OCR pipeline adds latency** | Low | Show progress indicators, allow cancellation, make direct pipeline default |
+| **Model not pulled** | Medium | Check model availability on startup, provide `ollama pull` commands |
+| **JSON parsing failures** | Medium | Strict schema validation, temperature=0, clear error messages |
+| **IndexedDB quota exceeded** | Low | Auto-cleanup of old runs (keep last 500), warn at 80% quota |
+
+## Implementation Roadmap
+
+### Sprint 1: MVP Foundation (Week 1-2)
+
+**Phase 1: Core Infrastructure**
+- Initialize Vue 3 + Vite + TypeScript project
+- Set up Pinia stores and Dexie.js
+- Implement Ollama API client with TypeScript types
+- Create base UI components (Button, Card, Slider)
+
+**Phase 2: File Handling**
+- File upload with drag-and-drop
+- Base64 conversion utilities
+- PDF/image preview generation
+- Large file detection and storage strategy
+
+**Phase 3: Pipeline Implementation**
+- Direct multimodal pipeline
+- OCR→Parse pipeline with two-step workflow
+- Model selector component
+- Parameter configuration panel
+
+**Phase 4: Results & Storage**
+- JSON viewer with syntax highlighting
+- TestRun model and IndexedDB schema
+- Save/load test runs
+- Basic error handling
+
+### Sprint 2: Comparison & Polish (Week 3)
+
+- JSON diff view with jsondiffpatch
+- Test history browser with filters
+- Side-by-side comparison view
+- Ollama connectivity check on startup
+- Loading states and progress indicators
+- Comprehensive error messages
+
+### Sprint 3: Advanced Features (Week 4)
+
+- Schema editor with live preview
+- Multiple schema support
+- Export capabilities (JSON, CSV)
+- Model presets and quick configurations
+- Keyboard shortcuts
+- User documentation
+
+### Post-MVP (Future Sprints)
+
+- Manual field correction UI
+- Golden file management
+- Batch processing
+- Model performance metrics
+- Team collaboration features
+- Backend server mode
+
+## Success Metrics
+
+### Development Metrics
+
+- **Sprint velocity**: Complete 80% of planned user stories per sprint
+- **Code quality**: Maintain TypeScript strict mode, <5 ESLint errors
+- **Test coverage**: 70%+ coverage on composables and utilities
+
+### User Metrics (Post-Launch)
+
+- **Accuracy**: 85%+ field extraction accuracy on test documents
+- **Reliability**: 95%+ successful test runs (no crashes or errors)
+- **Usability**: Users can complete first test run within 5 minutes
+- **Performance**: Average test run (excluding model inference) completes in <30s
