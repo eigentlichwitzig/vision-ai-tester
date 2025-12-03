@@ -194,3 +194,24 @@ export function tryFormatJson(str: string, indent: number = 2): string {
     return str
   }
 }
+
+/**
+ * Format a timestamp for display with date and time
+ */
+export function formatTimestamp(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date)
+}
+
+/**
+ * Format token count with prompt and completion breakdown
+ */
+export function formatTokensDetailed(prompt: number, completion: number): string {
+  const total = prompt + completion
+  return `${total} (${prompt} + ${completion})`
+}
