@@ -9,10 +9,11 @@ import PipelineSelector from '@/components/config/PipelineSelector.vue'
 import ModelSelector from '@/components/config/ModelSelector.vue'
 import ParameterPanel from '@/components/config/ParameterPanel.vue'
 import ValidationErrors from '@/components/results/ValidationErrors.vue'
+import ResultsPanel from '@/components/results/ResultsPanel.vue'
 import OllamaStatus from '@/components/layout/OllamaStatus.vue'
 import { useConfigStore } from '@/stores/configStore'
 import { useTestRunner } from '@/composables/useTestRunner'
-import type { ValidationError } from '@/types/models'
+import type { ValidationError, TestRun } from '@/types/models'
 
 // Demo state
 const sliderValue = ref(50)
@@ -134,6 +135,96 @@ const demoValidationErrors = ref<ValidationError[]>([
     params: { missingProperty: 'totalAmount' }
   }
 ])
+
+// Demo test run for ResultsPanel
+const demoTestRun = ref<TestRun>({
+  id: 'demo-test-run-1',
+  timestamp: new Date(),
+  modelName: 'qwen2.5vl:7b',
+  pipeline: 'ocr-then-parse',
+  ocrModel: 'deepseek-ocr',
+  parameters: {
+    temperature: 0,
+    maxTokens: 4096,
+    numCtx: 32768,
+    systemPrompt: 'Extract structured data from the document.',
+    userPrompt: 'Parse the following text into JSON format.'
+  },
+  input: {
+    fileName: 'invoice-001.pdf',
+    fileType: 'pdf',
+    mimeType: 'application/pdf',
+    size: 245632,
+    base64Content: ''
+  },
+  output: {
+    raw: JSON.stringify({
+      orderNumber: '12345',
+      orderDate: '2024-12-03',
+      customerName: 'ACME Corporation',
+      lineItems: [
+        {
+          description: 'Construction Materials - Steel Beams',
+          quantity: 5,
+          unitPrice: 250.00,
+          totalPrice: 1250.00
+        },
+        {
+          description: 'Concrete Mix - Premium Grade',
+          quantity: 10,
+          unitPrice: 45.00,
+          totalPrice: 450.00
+        }
+      ],
+      subtotal: 1700.00,
+      tax: 170.00,
+      totalAmount: 1870.00
+    }, null, 2),
+    parsed: {
+      orderNumber: '12345',
+      orderDate: '2024-12-03',
+      customerName: 'ACME Corporation',
+      lineItems: [
+        {
+          description: 'Construction Materials - Steel Beams',
+          quantity: 5,
+          unitPrice: 250.00,
+          totalPrice: 1250.00
+        },
+        {
+          description: 'Concrete Mix - Premium Grade',
+          quantity: 10,
+          unitPrice: 45.00,
+          totalPrice: 450.00
+        }
+      ],
+      subtotal: 1700.00,
+      tax: 170.00,
+      totalAmount: 1870.00
+    },
+    ocrText: `Order Number: 12345
+Date: 2024-12-03
+Customer: ACME Corporation
+
+Line Items:
+1. Construction Materials - Steel Beams
+   Quantity: 5 units @ $250.00 = $1,250.00
+
+2. Concrete Mix - Premium Grade
+   Quantity: 10 units @ $45.00 = $450.00
+
+Subtotal: $1,700.00
+Tax (10%): $170.00
+Total Amount: $1,870.00`,
+    isValid: true,
+    validationErrors: [],
+    promptTokens: 1024,
+    completionTokens: 512,
+    totalDuration: 3500000000
+  },
+  duration: 4250,
+  status: 'success'
+})
 
 const handleButtonClick = () => {
   isLoading.value = true
@@ -336,6 +427,19 @@ const handleButtonClick = () => {
         <BaseCard title="ValidationErrors Component Demo" subtitle="Display validation errors from JSON schema validation">
           <p class="text-gray-600 mb-4">This component displays validation errors when JSON output doesn't match the schema.</p>
           <ValidationErrors :errors="demoValidationErrors" />
+        </BaseCard>
+      </div>
+
+      <!-- Results Panel Demo -->
+      <div class="mt-8">
+        <BaseCard title="ResultsPanel Component Demo" subtitle="Tabbed interface for viewing test run results">
+          <p class="text-gray-600 mb-4">
+            This component displays test results with tabs for JSON output, raw response, and OCR text.
+            Try switching between tabs and copying content.
+          </p>
+          <div class="h-96">
+            <ResultsPanel :test-run="demoTestRun" />
+          </div>
         </BaseCard>
       </div>
 
