@@ -8,6 +8,18 @@ import Ajv from 'ajv'
 import addFormats from 'ajv-formats'
 import type { ValidationError } from '@/types/models'
 
+// Module-level singleton AJV instance for performance
+// Avoids recreating the validator on every composable invocation
+const ajv = new Ajv({
+  allErrors: true, // Return all errors, not just the first one
+  strict: true,
+  strictSchema: false, // Allow additional keywords in schema
+  strictTypes: false // Allow coercible types
+})
+
+// Add format validators for dates, emails, etc.
+addFormats(ajv)
+
 /**
  * Convert AJV error keyword to human-readable message
  */
@@ -82,17 +94,6 @@ export function useSchemaValidator() {
   // Validation state
   const isValid = ref(false)
   const errors = ref<ValidationError[]>([])
-  
-  // Create AJV instance with strict mode and format support
-  const ajv = new Ajv({
-    allErrors: true, // Return all errors, not just the first one
-    strict: true,
-    strictSchema: false, // Allow additional keywords in schema
-    strictTypes: false // Allow coercible types
-  })
-  
-  // Add format validators for dates, emails, etc.
-  addFormats(ajv)
   
   /**
    * Validate data against a JSON schema
@@ -186,6 +187,7 @@ export function useSchemaValidator() {
   
   /**
    * Clear validation state
+   * Useful when resetting the form or starting a new validation session
    */
   function clear(): void {
     isValid.value = false

@@ -379,7 +379,7 @@ export function useTestRunner() {
           
           if (!validResult) {
             output.validationErrors = schemaValidator.errors.value
-            output.error = 'JSON validation failed'
+            output.error = 'JSON output failed schema validation - see validation errors for details'
           } else {
             output.validationErrors = []
           }
@@ -688,7 +688,7 @@ export function useTestRunner() {
           
           if (!validResult) {
             output.validationErrors = schemaValidator.errors.value
-            output.error = 'JSON validation failed'
+            output.error = 'JSON output failed schema validation - see validation errors for details'
           } else {
             output.validationErrors = []
           }
