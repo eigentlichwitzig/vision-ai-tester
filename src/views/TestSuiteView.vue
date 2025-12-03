@@ -1,12 +1,120 @@
 <script setup lang="ts">
-// Main test suite view - will be implemented in later tasks
+import { ref } from 'vue'
+import BaseButton from '@/components/base/BaseButton.vue'
+import BaseCard from '@/components/base/BaseCard.vue'
+import BaseSlider from '@/components/base/BaseSlider.vue'
+
+// Demo state
+const sliderValue = ref(50)
+const temperatureValue = ref(0.7)
+const isLoading = ref(false)
+
+const handleButtonClick = () => {
+  isLoading.value = true
+  setTimeout(() => {
+    isLoading.value = false
+  }, 2000)
+}
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-50 p-8">
     <div class="max-w-7xl mx-auto">
       <h1 class="text-3xl font-bold text-gray-900 mb-6">Vision AI Tester</h1>
-      <div class="bg-white rounded-lg shadow p-6">
+
+      <!-- Base Components Demo -->
+      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <!-- Button Demo Card -->
+        <BaseCard title="BaseButton Component" subtitle="Various button variants and states">
+          <div class="space-y-4">
+            <div>
+              <p class="text-sm text-gray-500 mb-2">Variants:</p>
+              <div class="flex flex-wrap gap-2">
+                <BaseButton variant="primary">Primary</BaseButton>
+                <BaseButton variant="secondary">Secondary</BaseButton>
+                <BaseButton variant="danger">Danger</BaseButton>
+                <BaseButton variant="ghost">Ghost</BaseButton>
+              </div>
+            </div>
+
+            <div>
+              <p class="text-sm text-gray-500 mb-2">Sizes:</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <BaseButton size="sm">Small</BaseButton>
+                <BaseButton size="md">Medium</BaseButton>
+                <BaseButton size="lg">Large</BaseButton>
+              </div>
+            </div>
+
+            <div>
+              <p class="text-sm text-gray-500 mb-2">Icons:</p>
+              <div class="flex flex-wrap gap-2">
+                <BaseButton icon="check">Save</BaseButton>
+                <BaseButton icon="times" variant="danger">Delete</BaseButton>
+                <BaseButton icon="arrow-right" icon-pos="right" variant="secondary">Next</BaseButton>
+              </div>
+            </div>
+
+            <div>
+              <p class="text-sm text-gray-500 mb-2">States:</p>
+              <div class="flex flex-wrap gap-2">
+                <BaseButton disabled>Disabled</BaseButton>
+                <BaseButton :loading="isLoading" @click="handleButtonClick">
+                  {{ isLoading ? 'Loading...' : 'Click me' }}
+                </BaseButton>
+              </div>
+            </div>
+          </div>
+        </BaseCard>
+
+        <!-- Card Demo Card -->
+        <BaseCard title="BaseCard Component" subtitle="Container with slots">
+          <div class="space-y-4">
+            <BaseCard padding="sm" shadow="none">
+              <p class="text-sm text-gray-600">Card with small padding and no shadow</p>
+            </BaseCard>
+
+            <BaseCard title="Nested Card" shadow="md" padding="sm">
+              <p class="text-sm text-gray-600">This is a nested card with medium shadow</p>
+              <template #footer>
+                <div class="flex justify-end">
+                  <BaseButton size="sm" variant="ghost">Footer Action</BaseButton>
+                </div>
+              </template>
+            </BaseCard>
+          </div>
+        </BaseCard>
+
+        <!-- Slider Demo Card -->
+        <BaseCard title="BaseSlider Component" subtitle="Range input with value display">
+          <div class="space-y-6">
+            <BaseSlider
+              v-model="sliderValue"
+              label="Basic Slider"
+              :min="0"
+              :max="100"
+            />
+
+            <BaseSlider
+              v-model="temperatureValue"
+              label="Temperature"
+              :min="0"
+              :max="2"
+              :step="0.1"
+              :marks="{ 0: 'Precise', 1: 'Balanced', 2: 'Creative' }"
+            />
+
+            <BaseSlider
+              :model-value="75"
+              label="Disabled Slider"
+              disabled
+            />
+          </div>
+        </BaseCard>
+      </div>
+
+      <!-- Original Welcome Message -->
+      <div class="mt-8 bg-white rounded-lg shadow p-6">
         <p class="text-gray-600">
           Welcome to Vision AI Tester. This application is under development.
         </p>
