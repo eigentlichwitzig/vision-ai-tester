@@ -214,20 +214,12 @@ export function useTestRunner() {
   const progress = ref<string>('')
 
   /**
-   * Execute the direct multimodal pipeline
-   * Sends image directly to vision model with JSON schema for structured extraction
-   * 
-   * @param params - Pipeline execution parameters
-   * @returns Completed TestRun object
-   * @throws PipelineError if execution fails
+   * Verify Ollama server connectivity before pipeline execution
+   * @throws PipelineError if server is unreachable
    */
-  async function runDirectPipeline(params: DirectPipelineParams): Promise<TestRun> {
-    const configStore = useConfigStore()
-    const testStore = useTestStore()
-    const schemaStore = useSchemaStore()
+  async function ensureOllamaConnected(): Promise<void> {
     const { isOnline, checkHealth } = useOllamaHealth()
-
-    // Check Ollama connectivity before running
+    
     if (!isOnline.value) {
       await checkHealth()
     }
@@ -239,6 +231,23 @@ export function useTestRunner() {
         details: 'Start Ollama and ensure it is running on localhost:11434'
       } as PipelineError
     }
+  }
+
+  /**
+   * Execute the direct multimodal pipeline
+   * Sends image directly to vision model with JSON schema for structured extraction
+   * 
+   * @param params - Pipeline execution parameters
+   * @returns Completed TestRun object
+   * @throws PipelineError if execution fails
+   */
+  async function runDirectPipeline(params: DirectPipelineParams): Promise<TestRun> {
+    const configStore = useConfigStore()
+    const testStore = useTestStore()
+    const schemaStore = useSchemaStore()
+
+    // Check Ollama connectivity before running
+    await ensureOllamaConnected()
 
     // Validate required inputs
     if (!params.file) {
@@ -466,20 +475,9 @@ export function useTestRunner() {
     const configStore = useConfigStore()
     const testStore = useTestStore()
     const schemaStore = useSchemaStore()
-    const { isOnline, checkHealth } = useOllamaHealth()
 
     // Check Ollama connectivity before running
-    if (!isOnline.value) {
-      await checkHealth()
-    }
-    
-    if (!isOnline.value) {
-      throw {
-        code: 'SERVER_UNREACHABLE',
-        message: 'Ollama server is not reachable. Please check connectivity.',
-        details: 'Start Ollama and ensure it is running on localhost:11434'
-      } as PipelineError
-    }
+    await ensureOllamaConnected()
 
     // Validate required inputs
     if (!params.file) {

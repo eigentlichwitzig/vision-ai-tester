@@ -195,9 +195,13 @@ export function cancelCurrentRequest(): void {
 
 /**
  * Parse connection errors and provide troubleshooting guidance
+ * 
+ * Note: Error detection relies on error types and names rather than messages
+ * where possible, as messages can vary between browsers and versions.
  */
 export function parseConnectionError(error: unknown): HealthError {
   // Timeout errors (AbortError from AbortSignal.timeout)
+  // This is a reliable check based on error name, not message content
   if (error instanceof DOMException && error.name === 'AbortError') {
     return {
       code: 'TIMEOUT',
@@ -210,37 +214,24 @@ export function parseConnectionError(error: unknown): HealthError {
     }
   }
 
-  // Network/fetch errors - typically connection refused
+  // Network/fetch errors - TypeErrors from fetch API indicate network issues
+  // In browsers, a TypeError is thrown when fetch cannot connect to the server
+  // This covers connection refused, DNS failures, and network errors
   if (error instanceof TypeError) {
-    const message = error.message.toLowerCase()
-    
-    // Failed to fetch usually means connection refused
-    if (message.includes('failed to fetch') || message.includes('network')) {
-      return {
-        code: 'CONNECTION_REFUSED',
-        message: 'Ollama server is not running',
-        guidance: [
-          'Start Ollama: Open Ollama app or run `ollama serve`',
-          'Verify Ollama is running on localhost:11434',
-          'Check if another application is using port 11434'
-        ]
-      }
-    }
-
-    // Other TypeError might be CORS related
+    // TypeErrors from fetch are almost always connection failures
+    // Default to CONNECTION_REFUSED as it's the most common cause
     return {
-      code: 'CORS_ERROR',
-      message: 'CORS configuration error',
+      code: 'CONNECTION_REFUSED',
+      message: 'Ollama server is not running',
       guidance: [
-        'Set environment variable: OLLAMA_ORIGINS=*',
-        'Windows: Add to System Environment Variables',
-        'Mac/Linux: Add to ~/.ollama/config',
-        'Restart Ollama after making changes'
+        'Start Ollama: Open Ollama app or run `ollama serve`',
+        'Verify Ollama is running on localhost:11434',
+        'Check if another application is using port 11434'
       ]
     }
   }
 
-  // Check for response with status 0 (often CORS)
+  // Check for response with status 0 (often CORS or network error)
   if (typeof error === 'object' && error !== null && 'status' in error && (error as { status: number }).status === 0) {
     return {
       code: 'CORS_ERROR',
