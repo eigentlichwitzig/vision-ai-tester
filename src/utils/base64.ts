@@ -166,13 +166,18 @@ export function isValidFileType(file: File, acceptedTypes: string[]): boolean {
     return false
   }
   
-  // Validate that file's MIME type matches expected
-  // Handle case where browser might not provide MIME type
-  if (!file.type) {
-    return acceptedTypes.includes(extension)
+  // Verify the expected MIME type is in the supported list
+  if (!UPLOAD_SUPPORTED_MIME_TYPES.includes(expectedMimeType)) {
+    return false
   }
   
-  return file.type === expectedMimeType && UPLOAD_SUPPORTED_MIME_TYPES.includes(file.type)
+  // If browser provides MIME type, validate it matches expected
+  if (file.type) {
+    return file.type === expectedMimeType
+  }
+  
+  // If no MIME type provided by browser, extension-based validation passed
+  return true
 }
 
 /**
