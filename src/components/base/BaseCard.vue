@@ -32,7 +32,7 @@ const shadowClasses: Record<string, string> = {
   <div
     :class="[
       'bg-white rounded-lg',
-      shadowClasses[padding !== 'none' ? shadow : 'none'],
+      shadowClasses[shadow],
       border ? 'border border-gray-200' : ''
     ]"
   >

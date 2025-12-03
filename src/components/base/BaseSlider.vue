@@ -25,7 +25,9 @@ const emit = defineEmits<{
 }>()
 
 const percentage = computed(() => {
-  return ((props.modelValue - props.min) / (props.max - props.min)) * 100
+  const range = props.max - props.min
+  if (range === 0) return 0
+  return ((props.modelValue - props.min) / range) * 100
 })
 
 const handleInput = (event: Event) => {
@@ -35,14 +37,17 @@ const handleInput = (event: Event) => {
 
 const marksList = computed(() => {
   if (!props.marks) return []
+  const range = props.max - props.min
   return Object.entries(props.marks).map(([value, label]) => ({
     value: parseFloat(value),
     label,
-    percentage: ((parseFloat(value) - props.min) / (props.max - props.min)) * 100
+    percentage: range === 0 ? 0 : ((parseFloat(value) - props.min) / range) * 100
   }))
 })
 
-const sliderId = computed(() => `slider-${Math.random().toString(36).substring(2, 11)}`)
+// Use a counter for generating unique IDs to avoid accessibility issues with Math.random()
+let sliderIdCounter = 0
+const sliderId = `slider-${++sliderIdCounter}-${Date.now()}`
 </script>
 
 <template>
