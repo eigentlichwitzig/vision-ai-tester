@@ -15,7 +15,7 @@ const router = createRouter({
       component: () => import('./views/HistoryView.vue')
     },
     {
-      path: '/compare',
+      path: '/compare/:id1/:id2',
       name: 'compare',
       component: () => import('./views/CompareView.vue')
     }
