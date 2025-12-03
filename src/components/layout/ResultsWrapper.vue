@@ -30,7 +30,7 @@ watch(isRunning, (running) => {
       timer = null
     }
   }
-}, { immediate: true })
+})
 
 onUnmounted(() => {
   if (timer) {

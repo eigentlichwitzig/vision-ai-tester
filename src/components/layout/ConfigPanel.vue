@@ -231,7 +231,7 @@ watch(() => configStore.currentFile, () => {
     </section>
 
     <!-- Step 5: Run Test -->
-    <section class="sticky bottom-0 bg-gray-50 pt-4 pb-2 -mx-4 px-4 border-t border-gray-200">
+    <section class="execute-section sticky bottom-0 bg-gray-50 pt-4 pb-2 border-t border-gray-200">
       <div class="flex items-center gap-2 mb-3">
         <span class="flex items-center justify-center w-6 h-6 rounded-full bg-primary-100 text-primary-700 text-sm font-semibold">
           5
@@ -293,5 +293,13 @@ watch(() => configStore.currentFile, () => {
 <style scoped>
 .config-panel {
   background-color: #f9fafb;
+}
+
+/* Execute section extends to panel edges for full-width sticky footer */
+.execute-section {
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 </style>

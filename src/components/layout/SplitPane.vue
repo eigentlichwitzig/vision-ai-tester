@@ -1,10 +1,10 @@
 <script setup lang="ts">
 /**
  * SplitPane Component
- * Resizable split-pane layout with configurable min/max constraints
+ * Resizable horizontal split-pane layout with configurable min/max constraints
  */
 
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 
 interface Props {
   /** Initial width of the left panel as percentage (0-100) */
@@ -13,15 +13,12 @@ interface Props {
   minLeftWidth?: number
   /** Maximum width of the left panel as percentage */
   maxLeftWidth?: number
-  /** Direction of the split */
-  direction?: 'horizontal' | 'vertical'
 }
 
 const props = withDefaults(defineProps<Props>(), {
   initialLeftWidth: 35,
   minLeftWidth: 25,
-  maxLeftWidth: 50,
-  direction: 'horizontal'
+  maxLeftWidth: 50
 })
 
 // State
@@ -128,9 +125,7 @@ onUnmounted(() => {
       @mousedown="handleMouseDown"
       @keydown="handleKeyDown"
     >
-      <div class="h-full w-full flex items-center justify-center">
-        <div class="w-0.5 h-8 bg-gray-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-      </div>
+      <!-- Visual indicator is shown via CSS ::before pseudo-element -->
     </div>
 
     <!-- Right Panel -->
