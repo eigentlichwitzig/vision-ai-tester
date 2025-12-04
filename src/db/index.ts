@@ -6,6 +6,7 @@
 import Dexie, { type Table } from 'dexie'
 import type { TestRun, JsonSchema, StoredFile } from '@/types/models'
 import { base64ToBlob, blobToBase64 } from '@/utils/base64'
+import { serializeForStorage } from '@/utils/serialization'
 
 /**
  * Re-export StoredFile for backward compatibility
@@ -75,22 +76,25 @@ const LARGE_FILE_THRESHOLD = 5 * 1024 * 1024
  */
 export async function saveTestRun(testRun: TestRun): Promise<string> {
   try {
-    const fileSize = testRun.input.size
+    // Serialize to unwrap Vue reactive proxies before IndexedDB storage
+    // This prevents DataCloneError when storing reactive objects
+    const serializedRun = serializeForStorage(testRun)
+    const fileSize = serializedRun.input.size
 
     // Create a modifiable copy for storage
-    let runToStore = testRun
+    let runToStore = serializedRun
 
     // Check if file is large (>5MB) and has base64 content
-    if (fileSize > LARGE_FILE_THRESHOLD && testRun.input.base64Content) {
+    if (fileSize > LARGE_FILE_THRESHOLD && serializedRun.input.base64Content) {
       // Store file separately
       const fileId = crypto.randomUUID()
-      const blob = base64ToBlob(testRun.input.base64Content, testRun.input.mimeType)
+      const blob = base64ToBlob(serializedRun.input.base64Content, serializedRun.input.mimeType)
 
       await db.files.add({
         id: fileId,
-        testRunId: testRun.id,
-        fileName: testRun.input.fileName,
-        mimeType: testRun.input.mimeType,
+        testRunId: serializedRun.id,
+        fileName: serializedRun.input.fileName,
+        mimeType: serializedRun.input.mimeType,
         size: fileSize,
         blob,
         createdAt: new Date()
@@ -98,9 +102,9 @@ export async function saveTestRun(testRun: TestRun): Promise<string> {
 
       // Replace base64 with reference in a copy
       runToStore = {
-        ...testRun,
+        ...serializedRun,
         input: {
-          ...testRun.input,
+          ...serializedRun.input,
           fileRef: fileId,
           base64Content: ''  // Clear base64 content
         }
@@ -111,8 +115,8 @@ export async function saveTestRun(testRun: TestRun): Promise<string> {
     const stored = toStoredTestRun(runToStore)
     await db.testRuns.put(stored)
 
-    console.log(`Saved test run ${testRun.id}`)
-    return testRun.id
+    console.log(`Saved test run ${serializedRun.id}`)
+    return serializedRun.id
   } catch (error) {
     console.error('Failed to save test run:', error)
     throw error
@@ -202,8 +206,10 @@ export async function deleteTestRun(id: string): Promise<void> {
  * Save a file to the database
  */
 export async function saveFile(file: StoredFile): Promise<string> {
-  await db.files.put(file)
-  return file.id
+  // Serialize to unwrap Vue reactive proxies before IndexedDB storage
+  const serializedFile = serializeForStorage(file)
+  await db.files.put(serializedFile)
+  return serializedFile.id
 }
 
 /**
@@ -224,8 +230,10 @@ export async function deleteFile(id: string): Promise<void> {
  * Save a schema to the database
  */
 export async function saveSchema(schema: JsonSchema): Promise<string> {
-  await db.schemas.put(schema)
-  return schema.id
+  // Serialize to unwrap Vue reactive proxies before IndexedDB storage
+  const serializedSchema = serializeForStorage(schema)
+  await db.schemas.put(serializedSchema)
+  return serializedSchema.id
 }
 
 /**
