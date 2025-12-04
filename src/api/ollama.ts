@@ -164,6 +164,13 @@ export async function chatWithAbort(request: OllamaChatRequest): Promise<ApiResp
     }
 
     const data: OllamaChatResponse = await response.json()
+    console.log('📡 Ollama API response:', {
+      model: data.model,
+      messageRole: data.message?.role,
+      contentLength: data.message?.content?.length,
+      done: data.done,
+      evalCount: data.eval_count
+    })
     return { data, error: null, success: true }
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {

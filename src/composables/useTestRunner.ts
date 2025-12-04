@@ -10,6 +10,7 @@ import { useTestStore } from '@/stores/testStore'
 import { useSchemaStore } from '@/stores/schemaStore'
 import { useSchemaValidator } from '@/composables/useSchemaValidator'
 import { useOllamaHealth } from '@/composables/useOllamaHealth'
+import { cleanJsonSchemaForOllama } from '@/utils/schemaConverter'
 import type { 
   TestRun, 
   TestInput, 
@@ -374,7 +375,7 @@ export function useTestRunner() {
 
       // Add schema for structured output if available
       if (schema) {
-        request.format = schema
+        request.format = cleanJsonSchemaForOllama(schema)
       }
 
       currentStep.value = 'Sending request to model...'
@@ -756,7 +757,7 @@ export function useTestRunner() {
 
       // Add schema for structured output if available
       if (schema) {
-        parseRequest.format = schema
+        parseRequest.format = cleanJsonSchemaForOllama(schema)
       }
 
       // Execute parse API call
