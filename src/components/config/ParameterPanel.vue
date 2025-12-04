@@ -493,6 +493,44 @@ const temperatureMarks = {
         subtitle="Additional configuration settings"
       >
         <div class="space-y-4">
+          <!-- Thinking Mode toggle -->
+          <div class="flex items-center justify-between">
+            <div>
+              <label
+                for="thinking-mode-toggle"
+                class="text-sm font-medium text-gray-700"
+              >
+                Thinking Mode
+              </label>
+              <p class="text-xs text-gray-500">
+                Enable reasoning/thinking for supported models (e.g., DeepSeek-R1)
+              </p>
+            </div>
+            <button
+              id="thinking-mode-toggle"
+              type="button"
+              role="switch"
+              :aria-checked="configStore.thinkingMode"
+              :disabled="disabled"
+              :class="[
+                'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent',
+                'transition-colors duration-200 ease-in-out',
+                'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                configStore.thinkingMode ? 'bg-primary-600' : 'bg-gray-200',
+                disabled ? 'opacity-50 cursor-not-allowed' : ''
+              ]"
+              @click="configStore.thinkingMode = !configStore.thinkingMode"
+            >
+              <span
+                :class="[
+                  'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0',
+                  'transition duration-200 ease-in-out',
+                  configStore.thinkingMode ? 'translate-x-5' : 'translate-x-0'
+                ]"
+              />
+            </button>
+          </div>
+
           <!-- Auto-save toggle -->
           <div class="flex items-center justify-between">
             <div>

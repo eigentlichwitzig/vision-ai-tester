@@ -22,6 +22,8 @@ export interface OllamaChatRequest {
   format?: object       // JSON Schema for structured output
   stream?: boolean
   options?: OllamaOptions
+  /** Enable thinking/reasoning mode for supported models (e.g., DeepSeek-R1) */
+  think?: boolean
 }
 
 export interface OllamaChatResponse {
