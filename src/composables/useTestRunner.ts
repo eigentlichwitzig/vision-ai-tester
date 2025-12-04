@@ -50,17 +50,35 @@ export interface OcrPipelineParams {
   ocrModel?: string
   /** Parse model name (e.g., 'qwen2.5:7b') */
   parseModel?: string
-  /** OCR prompt for text extraction (legacy, use ocrConfig.userPrompt) */
+  /** 
+   * @deprecated Use ocrConfig.userPrompt instead
+   * OCR prompt for text extraction 
+   */
   ocrPrompt?: string
-  /** System prompt for parsing step (legacy, use parseConfig.systemPrompt) */
+  /** 
+   * @deprecated Use parseConfig.systemPrompt instead
+   * System prompt for parsing step 
+   */
   systemPrompt?: string
-  /** User prompt for parsing step (legacy, use parseConfig.userPrompt) */
+  /** 
+   * @deprecated Use parseConfig.userPrompt instead
+   * User prompt for parsing step 
+   */
   userPrompt?: string
-  /** Temperature (0 for deterministic output) (legacy, use ocrConfig/parseConfig) */
+  /** 
+   * @deprecated Use ocrConfig/parseConfig temperature instead
+   * Temperature (0 for deterministic output) 
+   */
   temperature?: number
-  /** Maximum tokens to generate (legacy, use ocrConfig/parseConfig) */
+  /** 
+   * @deprecated Use ocrConfig/parseConfig maxTokens instead
+   * Maximum tokens to generate 
+   */
   maxTokens?: number
-  /** Context window size (legacy, use ocrConfig/parseConfig) */
+  /** 
+   * @deprecated Use ocrConfig/parseConfig numCtx instead
+   * Context window size 
+   */
   numCtx?: number
   /** JSON schema for structured output */
   schema?: object
