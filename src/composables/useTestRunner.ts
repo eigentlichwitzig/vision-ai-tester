@@ -435,6 +435,11 @@ export function useTestRunner() {
         }
       }
 
+      // Add thinking mode if enabled
+      if (configStore.thinkingMode) {
+        request.think = true
+      }
+
       // Add schema for structured output if available
       if (schema) {
         request.format = cleanJsonSchemaForOllama(schema)
@@ -756,6 +761,11 @@ export function useTestRunner() {
         }
       }
 
+      // Add thinking mode if enabled (OCR step)
+      if (configStore.thinkingMode) {
+        ocrRequest.think = true
+      }
+
       // Execute OCR API call
       const ocrResponse = await chatWithAbort(ocrRequest)
 
@@ -844,6 +854,11 @@ export function useTestRunner() {
           num_predict: parseMaxTokens,
           num_ctx: parseNumCtx
         }
+      }
+
+      // Add thinking mode if enabled (Parse step)
+      if (configStore.thinkingMode) {
+        parseRequest.think = true
       }
 
       // Add schema for structured output if available

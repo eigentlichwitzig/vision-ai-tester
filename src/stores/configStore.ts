@@ -117,6 +117,9 @@ export const useConfigStore = defineStore('config', () => {
   const autoSaveTests = ref<boolean>(true)
   const theme = ref<'light' | 'dark'>('light')
   
+  /** Enable thinking/reasoning mode for supported models (e.g., DeepSeek-R1) */
+  const thinkingMode = ref<boolean>(false)
+  
   // Current file state (not persisted - file data is transient)
   const currentFile = ref<FileUploadData | null>(null)
 
@@ -277,6 +280,7 @@ export const useConfigStore = defineStore('config', () => {
     showAdvancedOptions,
     autoSaveTests,
     theme,
+    thinkingMode,
     currentFile,
     
     // Getters
