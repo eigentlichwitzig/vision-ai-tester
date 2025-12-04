@@ -3,7 +3,7 @@
  * Manages multimodal pipeline execution, state, and error handling
  */
 
-import { ref } from 'vue'
+import { ref, toRaw } from 'vue'
 import { chatWithAbort, cancelCurrentRequest } from '@/api'
 import { useConfigStore } from '@/stores/configStore'
 import { useTestStore } from '@/stores/testStore'
@@ -445,7 +445,9 @@ export function useTestRunner() {
           output.isValid = validResult
           
           if (!validResult) {
-            output.validationErrors = schemaValidator.errors.value
+            // Use toRaw() to unwrap Vue reactive proxy before assignment
+            // This prevents DataCloneError when saving to IndexedDB
+            output.validationErrors = toRaw(schemaValidator.errors.value)
             output.error = 'JSON output failed schema validation - see validation errors for details'
           } else {
             output.validationErrors = []
@@ -802,7 +804,9 @@ export function useTestRunner() {
           output.isValid = validResult
           
           if (!validResult) {
-            output.validationErrors = schemaValidator.errors.value
+            // Use toRaw() to unwrap Vue reactive proxy before assignment
+            // This prevents DataCloneError when saving to IndexedDB
+            output.validationErrors = toRaw(schemaValidator.errors.value)
             output.error = 'JSON output failed schema validation - see validation errors for details'
           } else {
             output.validationErrors = []
