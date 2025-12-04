@@ -36,8 +36,14 @@ export function serializeForStorage<T>(obj: T): T {
     return raw as T
   }
 
-  // Handle Blob objects (keep as-is, they are cloneable)
+  // Handle Blob and File objects (keep as-is, they are cloneable)
+  // File extends Blob, so this handles both
   if (raw instanceof Blob) {
+    return raw as T
+  }
+
+  // Handle ArrayBuffer objects (keep as-is, they are cloneable)
+  if (raw instanceof ArrayBuffer) {
     return raw as T
   }
 
@@ -47,6 +53,7 @@ export function serializeForStorage<T>(obj: T): T {
   }
 
   // Handle plain objects recursively
+  // Use Object.keys() to only iterate over own enumerable properties (safer than for...in)
   const result: Record<string, unknown> = {}
   for (const key of Object.keys(raw as object)) {
     const value = (raw as Record<string, unknown>)[key]
