@@ -11,6 +11,7 @@ import { useSchemaStore } from '@/stores/schemaStore'
 import { useSchemaValidator } from '@/composables/useSchemaValidator'
 import { useOllamaHealth } from '@/composables/useOllamaHealth'
 import { cleanJsonSchemaForOllama } from '@/utils/schemaConverter'
+import { pdfPageToImage } from '@/utils/pdfToImage'
 import type { 
   TestRun, 
   TestInput, 
@@ -119,6 +120,7 @@ export type PipelineErrorCode =
   | 'OCR_EXTRACTION_FAILED'
   | 'OCR_EMPTY_RESULT'
   | 'PARSE_STEP_FAILED'
+  | 'PDF_CONVERSION_FAILED'
   | 'UNKNOWN_ERROR'
 
 /**
@@ -144,6 +146,60 @@ export function stripBase64Prefix(base64: string): string {
   }
   // Already stripped or invalid format - return as-is
   return base64
+}
+
+/**
+ * Prepare image content for Ollama API
+ * If the file is a PDF, converts the first page to an image
+ * Ollama vision models only support image formats (PNG, JPEG), not PDFs
+ * 
+ * @param file - FileUploadData to prepare
+ * @param onProgress - Optional callback for progress updates
+ * @returns Raw base64 image content ready for Ollama
+ * @throws PipelineError if PDF conversion fails
+ */
+async function prepareImageForOllama(
+  file: FileUploadData,
+  onProgress?: (message: string) => void
+): Promise<string> {
+  // Strip any existing data URI prefix
+  const rawBase64 = stripBase64Prefix(file.base64Content)
+  
+  // If it's already an image, return as-is
+  if (file.fileType === 'image') {
+    return rawBase64
+  }
+  
+  // If it's a PDF, convert the first page to an image
+  if (file.fileType === 'pdf') {
+    onProgress?.('Converting PDF to image...')
+    
+    try {
+      const result = await pdfPageToImage(rawBase64, {
+        pageNumber: 1,
+        format: 'image/png',
+        scale: 2.0, // Good quality for OCR
+        maxWidth: 4096,
+        maxHeight: 4096
+      })
+      
+      console.log(`📄 PDF converted to image: ${result.width}x${result.height}px (page ${result.pageNumber}/${result.totalPages})`)
+      
+      return result.base64Content
+    } catch (conversionError) {
+      console.error('PDF to image conversion failed:', conversionError)
+      
+      throw {
+        code: 'PDF_CONVERSION_FAILED',
+        message: 'Failed to convert PDF to image for OCR processing.',
+        details: conversionError instanceof Error ? conversionError.message : 'Unknown conversion error'
+      } as PipelineError
+    }
+  }
+  
+  // Unknown file type - return as-is and let Ollama handle the error
+  console.warn(`Unknown file type: ${file.fileType}, sending as-is`)
+  return rawBase64
 }
 
 /**
@@ -345,8 +401,14 @@ export function useTestRunner() {
     const startTime = performance.now()
 
     try {
-      // Strip base64 prefix from image content
-      const base64Image = stripBase64Prefix(params.file.base64Content)
+      // Prepare image for Ollama (converts PDF to image if needed)
+      currentStep.value = 'Preparing image...'
+      progressPercent.value = 10
+      
+      const base64Image = await prepareImageForOllama(
+        params.file,
+        (msg) => { currentStep.value = msg }
+      )
 
       // Build messages array
       const messages: OllamaMessage[] = [
@@ -604,8 +666,8 @@ export function useTestRunner() {
     // Reset state
     error.value = null
     isRunning.value = true
-    currentStep.value = 'Step 1/2: Extracting text with OCR...'
-    progressPercent.value = 10
+    currentStep.value = 'Preparing...'
+    progressPercent.value = 0
     canCancel.value = true
 
     // Create test input from file data
@@ -654,13 +716,22 @@ export function useTestRunner() {
     const startTime = performance.now()
 
     try {
-      // Strip base64 prefix from image content
-      const base64Image = stripBase64Prefix(params.file.base64Content)
+      // Prepare image for Ollama (converts PDF to image if needed)
+      currentStep.value = 'Preparing image...'
+      progressPercent.value = 5
+      
+      const base64Image = await prepareImageForOllama(
+        params.file,
+        (msg) => { currentStep.value = msg }
+      )
 
       // ==========================================
       // STEP 1: OCR Extraction
       // ==========================================
       
+      currentStep.value = 'Step 1/2: Extracting text with OCR...'
+      progressPercent.value = 10
+
       // Build OCR request with OCR-specific configuration
       const ocrMessages: OllamaMessage[] = [
         {
