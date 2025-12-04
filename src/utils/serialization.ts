@@ -6,23 +6,36 @@
 import { toRaw, isProxy, isRef } from 'vue'
 
 /**
- * Deep clone an object using JSON serialization
- * This is a safety fallback to ensure all proxies are fully unwrapped
- * @param obj - Object to deep clone
- * @returns Plain JavaScript object safe for IndexedDB storage
+ * Check if an object might still contain Vue proxies after standard unwrapping
+ * This is a heuristic check - not 100% reliable but catches common cases
+ * @param obj - Object to check
+ * @returns true if the object might contain proxies
  */
-function jsonDeepClone<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj))
+function mightContainProxies(obj: unknown): boolean {
+  if (obj == null || typeof obj !== 'object') {
+    return false
+  }
+  
+  // Check if current object is a proxy
+  if (isProxy(obj)) {
+    return true
+  }
+  
+  // Check if object has Vue's internal reactive marker
+  const vueMarker = (obj as Record<string | symbol, unknown>)['__v_raw']
+  if (vueMarker !== undefined) {
+    return true
+  }
+  
+  return false
 }
 
 /**
- * Recursively unwrap Vue reactive proxies and refs from an object
- * This is necessary because IndexedDB uses structured clone which cannot handle Proxy objects
- * 
+ * Internal recursive function to unwrap Vue reactive proxies
  * @param obj - Object potentially containing Vue reactive proxies
- * @returns Plain JavaScript object safe for IndexedDB storage
+ * @returns Partially or fully unwrapped JavaScript object
  */
-export function serializeForStorage<T>(obj: T): T {
+function unwrapRecursively<T>(obj: T): T {
   // Handle null/undefined
   if (obj == null) {
     return obj
@@ -35,7 +48,7 @@ export function serializeForStorage<T>(obj: T): T {
 
   // Unwrap Vue ref if needed
   if (isRef(obj)) {
-    return serializeForStorage(obj.value) as T
+    return unwrapRecursively(obj.value) as T
   }
 
   // Unwrap Vue reactive proxy
@@ -59,15 +72,7 @@ export function serializeForStorage<T>(obj: T): T {
 
   // Handle arrays recursively
   if (Array.isArray(raw)) {
-    const result = raw.map(item => serializeForStorage(item))
-    // Safety fallback: use JSON round-trip to ensure no proxies remain
-    // This catches deeply nested reactive objects that isProxy() may miss
-    try {
-      return jsonDeepClone(result) as T
-    } catch {
-      // If JSON serialization fails (e.g., circular refs), return as-is
-      return result as T
-    }
+    return raw.map(item => unwrapRecursively(item)) as T
   }
 
   // Handle plain objects recursively
@@ -75,15 +80,38 @@ export function serializeForStorage<T>(obj: T): T {
   const result: Record<string, unknown> = {}
   for (const key of Object.keys(raw as object)) {
     const value = (raw as Record<string, unknown>)[key]
-    result[key] = serializeForStorage(value)
+    result[key] = unwrapRecursively(value)
   }
 
-  // Safety fallback: use JSON round-trip to ensure no proxies remain
-  // This catches deeply nested reactive objects that isProxy() may miss
-  try {
-    return jsonDeepClone(result) as T
-  } catch {
-    // If JSON serialization fails (e.g., circular refs), return as-is
-    return result as T
+  return result as T
+}
+
+/**
+ * Recursively unwrap Vue reactive proxies and refs from an object
+ * This is necessary because IndexedDB uses structured clone which cannot handle Proxy objects
+ * 
+ * Note: This function uses JSON serialization as a safety fallback for objects that might
+ * still contain proxies after standard unwrapping. This means non-enumerable properties,
+ * functions, undefined values, and symbols may be lost for complex objects. However, this
+ * is acceptable for test run data which consists of plain JSON-serializable data.
+ * 
+ * @param obj - Object potentially containing Vue reactive proxies
+ * @returns Plain JavaScript object safe for IndexedDB storage
+ */
+export function serializeForStorage<T>(obj: T): T {
+  // First, recursively unwrap all proxies we can detect
+  const unwrapped = unwrapRecursively(obj)
+  
+  // Check if the result might still contain proxies (Vue's isProxy() can miss some)
+  // If so, use JSON round-trip as a safety fallback
+  if (unwrapped != null && typeof unwrapped === 'object' && mightContainProxies(unwrapped)) {
+    try {
+      return JSON.parse(JSON.stringify(unwrapped))
+    } catch {
+      // If JSON serialization fails (e.g., circular refs), return as-is
+      return unwrapped
+    }
   }
+  
+  return unwrapped
 }
