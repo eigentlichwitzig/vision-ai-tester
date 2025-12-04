@@ -63,7 +63,7 @@ function unwrapRecursively<T>(obj: T, foundProxy = false): [T, boolean] {
   if (Array.isArray(raw)) {
     const result: unknown[] = []
     for (const item of raw) {
-      const [unwrappedItem, hadProxy] = unwrapRecursively(item, foundProxy)
+      const [unwrappedItem, hadProxy] = unwrapRecursively(item)
       result.push(unwrappedItem)
       foundProxy = foundProxy || hadProxy
     }
@@ -75,7 +75,7 @@ function unwrapRecursively<T>(obj: T, foundProxy = false): [T, boolean] {
   const result: Record<string, unknown> = {}
   for (const key of Object.keys(raw as object)) {
     const value = (raw as Record<string, unknown>)[key]
-    const [unwrappedValue, hadProxy] = unwrapRecursively(value, foundProxy)
+    const [unwrappedValue, hadProxy] = unwrapRecursively(value)
     result[key] = unwrappedValue
     foundProxy = foundProxy || hadProxy
   }
