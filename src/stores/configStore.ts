@@ -5,7 +5,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { PipelineType, TestParameters, FileUploadData } from '@/types/models'
+import type { PipelineType, TestParameters, FileUploadData, OcrPipelineConfig, ParsePipelineConfig } from '@/types/models'
 
 /**
  * Default system prompt for structured extraction
@@ -28,6 +28,55 @@ const DEFAULT_USER_PROMPT = 'Extract all fields from this document according to 
  * Default OCR prompt (Pipeline 1, Step 1)
  */
 const DEFAULT_OCR_PROMPT = 'Extract all visible text from this document. Preserve the layout and structure. Output the text exactly as it appears.'
+
+/**
+ * Default OCR system prompt (OCR step in OCR→Parse pipeline)
+ */
+const DEFAULT_OCR_SYSTEM_PROMPT = 'Extract all visible text from this document. Preserve the layout and structure. Output the text exactly as it appears.'
+
+/**
+ * Default OCR user prompt (OCR step in OCR→Parse pipeline)
+ */
+const DEFAULT_OCR_USER_PROMPT = 'Extract text from this document.'
+
+/**
+ * Default Parse system prompt (Parse step in OCR→Parse pipeline)
+ */
+const DEFAULT_PARSE_SYSTEM_PROMPT = `You are a structured data extraction assistant. Your task is to parse text and output valid JSON that strictly conforms to the provided schema.
+
+Rules:
+- Output ONLY valid JSON, no explanations
+- Use null for missing fields
+- Use ISO-8601 for dates (YYYY-MM-DD)
+- Use numbers (not strings) for numeric values
+- Preserve original text accuracy`
+
+/**
+ * Default Parse user prompt (Parse step in OCR→Parse pipeline)
+ */
+const DEFAULT_PARSE_USER_PROMPT = 'Parse the following text according to the schema. Be precise and accurate.'
+
+/**
+ * Default OCR configuration values
+ */
+const DEFAULT_OCR_CONFIG: OcrPipelineConfig = {
+  temperature: 0,
+  maxTokens: 2048,
+  numCtx: 4096,
+  systemPrompt: DEFAULT_OCR_SYSTEM_PROMPT,
+  userPrompt: DEFAULT_OCR_USER_PROMPT
+}
+
+/**
+ * Default Parse configuration values
+ */
+const DEFAULT_PARSE_CONFIG: Omit<ParsePipelineConfig, 'schemaId'> = {
+  temperature: 0,
+  maxTokens: 4096,
+  numCtx: 8192,
+  systemPrompt: DEFAULT_PARSE_SYSTEM_PROMPT,
+  userPrompt: DEFAULT_PARSE_USER_PROMPT
+}
 
 /**
  * Default parameter values
@@ -56,6 +105,13 @@ export const useConfigStore = defineStore('config', () => {
   const userPrompt = ref<string>(DEFAULT_PARAMETERS.userPrompt)
   const ocrPrompt = ref<string>(DEFAULT_OCR_PROMPT)
   
+  // OCR Pipeline specific configuration
+  const ocrConfig = ref<OcrPipelineConfig>({ ...DEFAULT_OCR_CONFIG })
+  const parseConfig = ref<ParsePipelineConfig>({ 
+    ...DEFAULT_PARSE_CONFIG,
+    schemaId: undefined
+  })
+  
   // UI preferences
   const showAdvancedOptions = ref<boolean>(false)
   const autoSaveTests = ref<boolean>(true)
@@ -74,14 +130,27 @@ export const useConfigStore = defineStore('config', () => {
     return selectedModel.value
   })
   
-  const currentParameters = computed((): TestParameters => ({
-    temperature: temperature.value,
-    maxTokens: maxTokens.value,
-    numCtx: numCtx.value,
-    systemPrompt: systemPrompt.value,
-    userPrompt: userPrompt.value,
-    schemaId: selectedSchemaId.value ?? undefined
-  }))
+  const currentParameters = computed((): TestParameters => {
+    const baseParams: TestParameters = {
+      temperature: temperature.value,
+      maxTokens: maxTokens.value,
+      numCtx: numCtx.value,
+      systemPrompt: systemPrompt.value,
+      userPrompt: userPrompt.value,
+      schemaId: selectedSchemaId.value ?? undefined
+    }
+    
+    // Add OCR pipeline specific parameters
+    if (selectedPipeline.value === 'ocr-then-parse') {
+      baseParams.ocrParameters = { ...ocrConfig.value }
+      baseParams.parseParameters = { 
+        ...parseConfig.value,
+        schemaId: selectedSchemaId.value ?? undefined
+      }
+    }
+    
+    return baseParams
+  })
 
   /**
    * Set the pipeline type
@@ -139,6 +208,27 @@ export const useConfigStore = defineStore('config', () => {
     systemPrompt.value = DEFAULT_PARAMETERS.systemPrompt
     userPrompt.value = DEFAULT_PARAMETERS.userPrompt
     ocrPrompt.value = DEFAULT_OCR_PROMPT
+    
+    // Reset OCR pipeline configurations
+    ocrConfig.value = { ...DEFAULT_OCR_CONFIG }
+    parseConfig.value = { 
+      ...DEFAULT_PARSE_CONFIG,
+      schemaId: undefined
+    }
+  }
+
+  /**
+   * Update OCR step configuration
+   */
+  function updateOcrConfig(params: Partial<OcrPipelineConfig>): void {
+    ocrConfig.value = { ...ocrConfig.value, ...params }
+  }
+
+  /**
+   * Update Parse step configuration
+   */
+  function updateParseConfig(params: Partial<ParsePipelineConfig>): void {
+    parseConfig.value = { ...parseConfig.value, ...params }
   }
 
   /**
@@ -182,6 +272,8 @@ export const useConfigStore = defineStore('config', () => {
     systemPrompt,
     userPrompt,
     ocrPrompt,
+    ocrConfig,
+    parseConfig,
     showAdvancedOptions,
     autoSaveTests,
     theme,
@@ -199,6 +291,8 @@ export const useConfigStore = defineStore('config', () => {
     setParseModel,
     setSchema,
     updateParameters,
+    updateOcrConfig,
+    updateParseConfig,
     resetParameters,
     toggleAdvancedOptions,
     setTheme,
