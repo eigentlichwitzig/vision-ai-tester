@@ -47,11 +47,17 @@ export const db = new VisionAITesterDB()
 
 /**
  * Convert TestRun to StoredTestRun for database storage
+ * Handles timestamp that might already be a string (from serialization)
+ * or might be a Date object
  */
 export function toStoredTestRun(testRun: TestRun): StoredTestRun {
+  const timestamp = testRun.timestamp instanceof Date 
+    ? testRun.timestamp.toISOString()
+    : String(testRun.timestamp)
+  
   return {
     ...testRun,
-    timestamp: testRun.timestamp.toISOString()
+    timestamp
   }
 }
 
