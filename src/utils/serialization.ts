@@ -97,7 +97,19 @@ export function serializeForStorage<T>(obj: T): T {
   // This catches any deeply nested reactive structures that might have survived
   if (foundProxy && unwrapped != null && typeof unwrapped === 'object') {
     try {
-      return JSON.parse(JSON.stringify(unwrapped))
+      // JSON round-trip with Date restoration
+      // JSON.stringify converts Date objects to ISO strings, so we use a reviver
+      // to convert them back to Date objects
+      return JSON.parse(JSON.stringify(unwrapped), (_key, value) => {
+        // Check if value looks like an ISO date string
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+          const date = new Date(value)
+          if (!isNaN(date.getTime())) {
+            return date
+          }
+        }
+        return value
+      })
     } catch (error) {
       // Log warning for debugging but don't fail - return what we have
       console.warn('serializeForStorage: JSON round-trip failed, returning unwrapped object', error)
