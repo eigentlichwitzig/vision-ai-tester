@@ -7,9 +7,9 @@ import { toRaw, isProxy, isRef } from 'vue'
 
 /**
  * Regex pattern to match ISO 8601 date strings
- * Matches formats like: 2025-01-15T10:30:00Z, 2025-01-15T10:30:00.123Z, 2025-01-15T10:30:00+00:00
+ * Matches formats like: 2025-01-15T10:30:00Z, 2025-01-15T10:30:00.123Z, 2025-01-15T10:30:00+00:00, 2025-01-15T10:30:00+0530
  */
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})?$/
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/
 
 /**
  * Check if a value is an ISO 8601 date string
