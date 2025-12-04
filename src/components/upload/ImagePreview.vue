@@ -87,7 +87,7 @@ async function loadImage(): Promise<void> {
       isUsingThumbnail.value = false
     }
     
-    // Get image dimensions (from original for accurate display, or thumbnail)
+    // Get image dimensions from displayed image (thumbnail or original)
     const dims = await getImageDimensions(dataUri.value)
     
     if (!dims) {

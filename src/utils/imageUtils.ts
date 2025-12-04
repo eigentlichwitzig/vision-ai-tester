@@ -186,6 +186,41 @@ export function shouldGenerateThumbnail(size: number): boolean {
 }
 
 /**
+ * Internal helper to render an image to canvas and generate thumbnail
+ * @param img - Loaded Image element
+ * @param maxWidth - Maximum thumbnail width
+ * @param maxHeight - Maximum thumbnail height
+ * @param quality - JPEG quality 0-1
+ * @returns Base64 data URI of thumbnail
+ */
+function renderThumbnailToCanvas(
+  img: HTMLImageElement,
+  maxWidth: number,
+  maxHeight: number,
+  quality: number
+): string {
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  
+  if (!ctx) {
+    throw new Error('Failed to get canvas context')
+  }
+  
+  // Calculate scaled dimensions maintaining aspect ratio
+  const scaled = calculateScaledDimensions(
+    { width: img.width, height: img.height },
+    maxWidth,
+    maxHeight
+  )
+  
+  canvas.width = scaled.width
+  canvas.height = scaled.height
+  ctx.drawImage(img, 0, 0, scaled.width, scaled.height)
+  
+  return canvas.toDataURL('image/jpeg', quality)
+}
+
+/**
  * Generate a thumbnail from a File object
  * Used for large images (>1MB) to improve preview performance
  * 
@@ -203,33 +238,17 @@ export async function generateThumbnail(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image()
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    
-    if (!ctx) {
-      reject(new Error('Failed to get canvas context'))
-      return
-    }
     
     img.onload = () => {
-      // Calculate scaled dimensions maintaining aspect ratio
-      let width = img.width
-      let height = img.height
-      
-      if (width > maxWidth || height > maxHeight) {
-        const ratio = Math.min(maxWidth / width, maxHeight / height)
-        width = Math.round(width * ratio)
-        height = Math.round(height * ratio)
+      try {
+        const result = renderThumbnailToCanvas(img, maxWidth, maxHeight, quality)
+        // Revoke object URL to prevent memory leaks
+        URL.revokeObjectURL(img.src)
+        resolve(result)
+      } catch (err) {
+        URL.revokeObjectURL(img.src)
+        reject(err)
       }
-      
-      canvas.width = width
-      canvas.height = height
-      ctx.drawImage(img, 0, 0, width, height)
-      
-      // Revoke object URL to prevent memory leaks
-      URL.revokeObjectURL(img.src)
-      
-      resolve(canvas.toDataURL('image/jpeg', quality))
     }
     
     img.onerror = () => {
@@ -260,30 +279,13 @@ export async function generateThumbnailFromBase64(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image()
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    
-    if (!ctx) {
-      reject(new Error('Failed to get canvas context'))
-      return
-    }
     
     img.onload = () => {
-      // Calculate scaled dimensions maintaining aspect ratio
-      let width = img.width
-      let height = img.height
-      
-      if (width > maxWidth || height > maxHeight) {
-        const ratio = Math.min(maxWidth / width, maxHeight / height)
-        width = Math.round(width * ratio)
-        height = Math.round(height * ratio)
+      try {
+        resolve(renderThumbnailToCanvas(img, maxWidth, maxHeight, quality))
+      } catch (err) {
+        reject(err)
       }
-      
-      canvas.width = width
-      canvas.height = height
-      ctx.drawImage(img, 0, 0, width, height)
-      
-      resolve(canvas.toDataURL('image/jpeg', quality))
     }
     
     img.onerror = () => {
