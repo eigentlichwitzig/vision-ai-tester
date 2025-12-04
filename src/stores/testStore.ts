@@ -68,18 +68,39 @@ export const useTestStore = defineStore('test', () => {
 
   /**
    * Complete test execution with success
-   * Status is determined by validation: valid output = success, invalid output = error
+   * Status is determined by multiple factors:
+   * - Complete failure (no response, API errors): error
+   * - Parse failure (response exists but JSON invalid): success (API responded)
+   * - Validation failure (JSON parsed but schema invalid): error
+   * - Success (everything valid): success
    */
   async function completeExecution(output: TestRun['output'], duration: number): Promise<void> {
     if (currentTestRun.value) {
       currentTestRun.value.output = output
       currentTestRun.value.duration = duration
       
-      // Set status based on validation
-      if (output.isValid === false) {
+      // Determine status based on multiple factors
+      if (output.error && !output.raw) {
+        // Complete failure - no response from model
         currentTestRun.value.status = 'error'
-      } else {
+        console.error('❌ Test failed: No response from model')
+      } else if (output.error && output.raw && !output.parsed) {
+        // Parse failure - response exists but couldn't be parsed as JSON
+        // This is still success from API perspective, raw output is available for review
         currentTestRun.value.status = 'success'
+        console.warn('⚠️ Test completed with parse error:', output.error)
+      } else if (output.isValid === false && output.parsed) {
+        // Validation failure - JSON parsed but schema invalid
+        currentTestRun.value.status = 'error'
+        console.warn('⚠️ Test completed with validation errors:', output.validationErrors)
+      } else if (output.isValid === true || (output.parsed && output.isValid === undefined)) {
+        // Success - valid JSON (with or without schema validation)
+        currentTestRun.value.status = 'success'
+        console.log('✅ Test completed successfully')
+      } else {
+        // Fallback to success if we have any output
+        currentTestRun.value.status = output.raw ? 'success' : 'error'
+        console.log('ℹ️ Test completed with fallback status:', currentTestRun.value.status)
       }
       
       // Save to database (even if invalid, for debugging)
@@ -88,7 +109,9 @@ export const useTestStore = defineStore('test', () => {
       // Add to history
       testHistory.value.unshift({ ...currentTestRun.value })
     }
-    executionStatus.value = output.isValid === false ? 'error' : 'success'
+    
+    // Update execution status for UI
+    executionStatus.value = currentTestRun.value?.status === 'success' ? 'success' : 'error'
   }
 
   /**
