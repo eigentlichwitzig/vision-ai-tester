@@ -169,6 +169,7 @@ export async function chatWithAbort(request: OllamaChatRequest): Promise<ApiResp
         model: data.model,
         messageRole: data.message?.role,
         contentLength: data.message?.content?.length,
+        thinkingLength: data.message?.thinking?.length,
         done: data.done,
         evalCount: data.eval_count
       })

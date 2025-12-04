@@ -67,6 +67,7 @@ export interface TestOutput {
   raw: string                   // Raw response from model
   parsed?: object               // Validated JSON object
   ocrText?: string              // Intermediate OCR output (if pipeline 1)
+  thinking?: string             // Thinking/reasoning content from models like DeepSeek-R1
   error?: string
   validationErrors?: ValidationError[]  // Validation errors from schema validation
   isValid?: boolean                     // Whether output passed schema validation
