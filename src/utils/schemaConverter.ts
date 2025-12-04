@@ -7,22 +7,31 @@ import { zodToJsonSchema } from 'zod-to-json-schema'
 import type { ZodType } from 'zod'
 
 /**
- * Convert a Zod schema to a clean JSON schema for Ollama
- * Strips meta-fields that can cause issues with Ollama's structured output
+ * Convert a Zod schema to JSON Schema format for Ollama
+ * This is equivalent to Pydantic's model_json_schema()
+ * 
+ * CRITICAL: Removes $schema and other meta-fields that cause Ollama to ignore the format
  * 
  * @param zodSchema - Zod schema to convert
  * @returns Clean JSON schema object compatible with Ollama
  */
-export function convertZodToOllamaSchema(zodSchema: ZodType): object {
+export function zodToOllamaSchema(zodSchema: ZodType): object {
   const jsonSchema = zodToJsonSchema(zodSchema, {
-    $refStrategy: 'none', // Inline all refs for Ollama compatibility
+    $refStrategy: 'none', // Inline all refs - Ollama doesn't handle $ref
+    target: 'jsonSchema7'
   })
 
-  // Remove $schema meta-field that can cause issues
-  const { $schema, ...cleanSchema } = jsonSchema as Record<string, unknown>
+  // Remove meta-fields that cause issues with Ollama
+  const schemaObj = jsonSchema as Record<string, unknown>
+  const { $schema, $id, definitions, $defs, ...cleanSchema } = schemaObj
 
   return cleanSchema
 }
+
+/**
+ * Alias for zodToOllamaSchema for backward compatibility
+ */
+export const convertZodToOllamaSchema = zodToOllamaSchema
 
 /**
  * Clean an existing JSON schema for Ollama compatibility
@@ -34,7 +43,7 @@ export function convertZodToOllamaSchema(zodSchema: ZodType): object {
 export function cleanJsonSchemaForOllama(schema: object): object {
   const schemaObj = schema as Record<string, unknown>
   // Remove common meta-fields that Ollama may not handle well
-  const { $schema, $id, definitions, ...cleanSchema } = schemaObj
+  const { $schema, $id, $ref, definitions, $defs, ...cleanSchema } = schemaObj
 
   return cleanSchema
 }
