@@ -20,8 +20,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  maxWidth: 800,
-  maxHeight: 600
+  maxWidth: 400,
+  maxHeight: 500
 })
 
 const emit = defineEmits<{
@@ -192,6 +192,9 @@ watch(
 <style scoped>
 .pdf-preview {
   width: 100%;
+  max-width: 400px;
+  max-height: 500px;
+  overflow: auto;
 }
 
 .skeleton-container {
@@ -223,11 +226,42 @@ watch(
   justify-content: center;
   align-items: center;
   min-height: 200px;
+  max-height: 400px;
+  overflow: auto;
 }
 
 /* Override vue-pdf styles for better display */
 .pdf-viewer-wrapper :deep(canvas) {
   max-width: 100%;
+  max-height: 380px;
   height: auto !important;
+  object-fit: contain;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 1024px) {
+  .pdf-preview {
+    max-width: 300px;
+    max-height: 400px;
+  }
+  .pdf-viewer-wrapper {
+    max-height: 320px;
+  }
+  .pdf-viewer-wrapper :deep(canvas) {
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .pdf-preview {
+    max-width: 250px;
+    max-height: 350px;
+  }
+  .pdf-viewer-wrapper {
+    max-height: 280px;
+  }
+  .pdf-viewer-wrapper :deep(canvas) {
+    max-height: 260px;
+  }
 }
 </style>

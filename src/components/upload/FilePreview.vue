@@ -24,8 +24,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  maxWidth: 800,
-  maxHeight: 600,
+  maxWidth: 400,
+  maxHeight: 500,
   autoLoad: undefined
 })
 
@@ -190,6 +190,7 @@ async function handleRetry(): Promise<void> {
       :base64-content="fileData.base64Content"
       :mime-type="fileData.mimeType"
       :file-name="fileData.fileName"
+      :thumbnail="fileData.thumbnail"
       :max-width="maxWidth"
       :max-height="maxHeight"
       @loaded="handleImageLoaded"
@@ -213,6 +214,9 @@ async function handleRetry(): Promise<void> {
 .file-preview {
   display: flex;
   flex-direction: column;
+  max-width: 400px;
+  max-height: 500px;
+  overflow: auto;
 }
 
 .file-metadata h3 {
@@ -221,5 +225,20 @@ async function handleRetry(): Promise<void> {
 
 .skeleton-box {
   min-height: 200px;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 1024px) {
+  .file-preview {
+    max-width: 300px;
+    max-height: 400px;
+  }
+}
+
+@media (max-width: 768px) {
+  .file-preview {
+    max-width: 250px;
+    max-height: 350px;
+  }
 }
 </style>
