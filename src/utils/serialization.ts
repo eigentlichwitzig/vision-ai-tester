@@ -6,6 +6,21 @@
 import { toRaw, isProxy, isRef } from 'vue'
 
 /**
+ * Regex pattern to match ISO 8601 date strings
+ * Matches formats like: 2025-01-15T10:30:00Z, 2025-01-15T10:30:00.123Z, 2025-01-15T10:30:00+00:00
+ */
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})?$/
+
+/**
+ * Check if a value is an ISO 8601 date string
+ * @param value - Value to check
+ * @returns true if value is a valid ISO date string
+ */
+function isISODateString(value: unknown): value is string {
+  return typeof value === 'string' && ISO_DATE_PATTERN.test(value)
+}
+
+/**
  * Recursively unwrap Vue reactive proxies and refs from an object
  * This is necessary because IndexedDB uses structured clone which cannot handle Proxy objects
  * 
@@ -102,7 +117,7 @@ export function serializeForStorage<T>(obj: T): T {
       // to convert them back to Date objects
       return JSON.parse(JSON.stringify(unwrapped), (_key, value) => {
         // Check if value looks like an ISO date string
-        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+        if (isISODateString(value)) {
           const date = new Date(value)
           if (!isNaN(date.getTime())) {
             return date
