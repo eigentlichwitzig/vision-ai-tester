@@ -423,16 +423,31 @@ export function useTestRunner() {
       currentStep.value = 'Validating response...'
       progressPercent.value = 75
 
-      // Extract response content
-      const rawContent = response.data.message.content
+      // Extract response content - check both content and thinking fields
+      // Reasoning models like DeepSeek-R1 may put output in thinking field
+      let rawContent = response.data.message.content
+      const thinkingContent = response.data.message.thinking
 
       console.log('🔍 Direct Pipeline - Raw response received')
-      console.log('  Length:', rawContent?.length ?? 0)
-      console.log('  Preview:', rawContent?.substring(0, 200))
+      console.log('  Content Length:', rawContent?.length ?? 0)
+      console.log('  Thinking Length:', thinkingContent?.length ?? 0)
+      console.log('  Content Preview:', rawContent?.substring(0, 200))
+
+      // If content is empty but thinking has content, try to extract from thinking
+      if ((!rawContent || rawContent.trim().length === 0) && thinkingContent && thinkingContent.trim().length > 0) {
+        console.log('🔄 Content empty, attempting to extract from thinking content...')
+        // Try to find JSON in thinking content (reasoning models sometimes put answer in thinking)
+        const jsonMatch = thinkingContent.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          rawContent = jsonMatch[0]
+          console.log('✅ Extracted JSON from thinking content')
+        }
+      }
 
       // Build output object - ALWAYS populate raw content
       const output: TestOutput = {
         raw: rawContent || '',  // Ensure raw is always set
+        thinking: thinkingContent,  // Store thinking content for debugging
         promptTokens: response.data.prompt_eval_count,
         completionTokens: response.data.eval_count,
         totalDuration: response.data.total_duration
@@ -440,7 +455,12 @@ export function useTestRunner() {
 
       // Validate we have content
       if (!rawContent || rawContent.trim().length === 0) {
-        output.error = 'Model returned empty response'
+        // Provide more specific error message for reasoning models
+        if (thinkingContent && thinkingContent.trim().length > 0) {
+          output.error = 'Reasoning model returned only thinking content, no final output. Try increasing maxTokens or using a non-reasoning model.'
+        } else {
+          output.error = 'Model returned empty response'
+        }
         output.isValid = false
         console.error('❌ Empty response from model')
       } else {
@@ -802,18 +822,33 @@ export function useTestRunner() {
       currentStep.value = 'Validating output...'
       progressPercent.value = 85
 
-      // Extract parse response content
-      const rawContent = parseResponse.data.message.content
+      // Extract parse response content - check both content and thinking fields
+      // Reasoning models like DeepSeek-R1 may put output in thinking field
+      let rawContent = parseResponse.data.message.content
+      const thinkingContent = parseResponse.data.message.thinking
 
       console.log('🔍 OCR Pipeline - Parse response received')
-      console.log('  Length:', rawContent?.length ?? 0)
-      console.log('  Preview:', rawContent?.substring(0, 200))
+      console.log('  Content Length:', rawContent?.length ?? 0)
+      console.log('  Thinking Length:', thinkingContent?.length ?? 0)
+      console.log('  Content Preview:', rawContent?.substring(0, 200))
       console.log('  OCR Text Length:', ocrText?.length ?? 0)
+
+      // If content is empty but thinking has content, try to extract from thinking
+      if ((!rawContent || rawContent.trim().length === 0) && thinkingContent && thinkingContent.trim().length > 0) {
+        console.log('🔄 Content empty, attempting to extract from thinking content...')
+        // Try to find JSON in thinking content (reasoning models sometimes put answer in thinking)
+        const jsonMatch = thinkingContent.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          rawContent = jsonMatch[0]
+          console.log('✅ Extracted JSON from thinking content')
+        }
+      }
 
       // Build output object with OCR text - ALWAYS populate raw and ocrText
       const output: TestOutput = {
         raw: rawContent || '',  // Ensure raw is always set
         ocrText,  // Always include OCR text
+        thinking: thinkingContent,  // Store thinking content for debugging
         promptTokens: (ocrResponse.data.prompt_eval_count ?? 0) + (parseResponse.data.prompt_eval_count ?? 0),
         completionTokens: (ocrResponse.data.eval_count ?? 0) + (parseResponse.data.eval_count ?? 0),
         totalDuration: (ocrResponse.data.total_duration ?? 0) + (parseResponse.data.total_duration ?? 0)
@@ -821,7 +856,12 @@ export function useTestRunner() {
 
       // Validate we have content
       if (!rawContent || rawContent.trim().length === 0) {
-        output.error = 'Parse model returned empty response'
+        // Provide more specific error message for reasoning models
+        if (thinkingContent && thinkingContent.trim().length > 0) {
+          output.error = 'Reasoning model returned only thinking content, no final output. Try increasing maxTokens or using a non-reasoning model.'
+        } else {
+          output.error = 'Parse model returned empty response'
+        }
         output.isValid = false
         console.error('❌ Empty response from parse model')
       } else {

@@ -30,6 +30,8 @@ export interface OllamaChatResponse {
   message: {
     role: string
     content: string
+    /** Thinking/reasoning content from models like DeepSeek-R1 */
+    thinking?: string
   }
   done: boolean
   total_duration?: number
