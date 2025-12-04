@@ -13,8 +13,9 @@ import { OrderListSchema } from '@/schemas/orderList'
 
 /**
  * Default construction order schema ID
+ * Note: Kept as 'construction-order' for backward compatibility with existing data
  */
-export const DEFAULT_SCHEMA_ID = 'order-list'
+export const DEFAULT_SCHEMA_ID = 'construction-order'
 
 export const useSchemaStore = defineStore('schema', () => {
   // State

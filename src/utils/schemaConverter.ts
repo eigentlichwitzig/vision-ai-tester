@@ -23,7 +23,7 @@ export function zodToOllamaSchema(zodSchema: ZodType): object {
 
   // Remove meta-fields that cause issues with Ollama
   const schemaObj = jsonSchema as Record<string, unknown>
-  const { $schema, $id, definitions, $defs, ...cleanSchema } = schemaObj
+  const { $schema, $id, $ref, definitions, $defs, ...cleanSchema } = schemaObj
 
   return cleanSchema
 }
