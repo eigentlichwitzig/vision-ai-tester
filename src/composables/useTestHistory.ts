@@ -328,12 +328,14 @@ export function useTestHistory() {
     error.value = null
     
     try {
-      // Delete from database
-      const run = await db.testRuns.get(id)
-      if (run?.input.fileRef) {
-        await db.files.delete(run.input.fileRef)
-      }
-      await db.testRuns.delete(id)
+      // Delete from database using transaction for atomicity
+      await db.transaction('rw', [db.testRuns, db.files], async () => {
+        const run = await db.testRuns.get(id)
+        if (run?.input.fileRef) {
+          await db.files.delete(run.input.fileRef)
+        }
+        await db.testRuns.delete(id)
+      })
       
       // Remove from selections
       const newSet = new Set(selectedIds.value)
@@ -363,14 +365,22 @@ export function useTestHistory() {
     error.value = null
     
     try {
-      // Delete each run and its files
-      for (const id of ids) {
-        const run = await db.testRuns.get(id)
-        if (run?.input.fileRef) {
-          await db.files.delete(run.input.fileRef)
+      // Delete all runs and their files using transaction for atomicity
+      await db.transaction('rw', [db.testRuns, db.files], async () => {
+        // Get all runs to find file references
+        const runs = await db.testRuns.bulkGet(ids)
+        
+        // Collect file refs to delete
+        const fileRefs = runs
+          .filter((run): run is StoredTestRun => run !== undefined && !!run.input.fileRef)
+          .map(run => run.input.fileRef as string)
+        
+        // Bulk delete files and runs
+        if (fileRefs.length > 0) {
+          await db.files.bulkDelete(fileRefs)
         }
-        await db.testRuns.delete(id)
-      }
+        await db.testRuns.bulkDelete(ids)
+      })
       
       // Clear selections
       selectedIds.value = new Set()

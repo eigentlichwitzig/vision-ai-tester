@@ -4,7 +4,7 @@
  * Provides search, pipeline, model, status, and date range filters
  */
 
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import type { PipelineType, TestStatus } from '@/types/models'
 import type { HistoryFilters } from '@/composables/useTestHistory'
 
@@ -30,16 +30,23 @@ const localDateFrom = ref(props.filters.dateFrom)
 const localDateTo = ref(props.filters.dateTo)
 
 // Debounce timer for search
-let searchTimeout: ReturnType<typeof setTimeout> | null = null
+const searchTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 
 // Watch for search input changes with debounce
 watch(localSearch, (value) => {
-  if (searchTimeout) {
-    clearTimeout(searchTimeout)
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value)
   }
-  searchTimeout = setTimeout(() => {
+  searchTimeout.value = setTimeout(() => {
     emit('update:filters', { search: value })
   }, 300)
+})
+
+// Cleanup timeout on unmount to prevent memory leaks
+onUnmounted(() => {
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value)
+  }
 })
 
 // Immediate updates for other filters

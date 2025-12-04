@@ -82,15 +82,19 @@ function handlePageChange(page: number) {
 /**
  * View test run details
  */
-function viewRun(run: TestRun) {
-  // Navigate to main view and load the run
-  router.push({ name: 'test-suite', query: { loadRun: run.id } })
+async function viewRun(run: TestRun) {
+  try {
+    // Navigate to main view and load the run
+    await router.push({ name: 'test-suite', query: { loadRun: run.id } })
+  } catch (err) {
+    console.error('Failed to navigate to test run:', err)
+  }
 }
 
 /**
  * Start comparison flow
  */
-function startComparison(run: TestRun) {
+async function startComparison(run: TestRun) {
   if (comparisonRunId.value === null) {
     // First run selected
     comparisonRunId.value = run.id
@@ -99,13 +103,17 @@ function startComparison(run: TestRun) {
     comparisonRunId.value = null
   } else {
     // Second run selected, navigate to compare view
-    router.push({ 
-      name: 'compare-with-ids', 
-      params: { 
-        id1: comparisonRunId.value, 
-        id2: run.id 
-      } 
-    })
+    try {
+      await router.push({ 
+        name: 'compare-with-ids', 
+        params: { 
+          id1: comparisonRunId.value, 
+          id2: run.id 
+        } 
+      })
+    } catch (err) {
+      console.error('Failed to navigate to comparison view:', err)
+    }
     comparisonRunId.value = null
   }
 }
