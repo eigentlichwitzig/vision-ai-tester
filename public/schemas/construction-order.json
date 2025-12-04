@@ -1,56 +1,91 @@
 {
-  "title": "Construction Order",
   "type": "object",
   "properties": {
-    "orderNumber": {
-      "type": "string",
-      "description": "Unique order identifier"
+    "contactInfo": {
+      "type": "object",
+      "properties": {
+        "phone": { "type": "string" },
+        "fax": { "type": "string" },
+        "website": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["phone", "fax", "website", "email"]
     },
-    "date": {
-      "type": "string",
-      "format": "date",
-      "description": "Order date in YYYY-MM-DD format"
+    "order": {
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "Construction_project": { "type": "string" },
+        "Construction_project_no": { "type": ["integer", "null"] },
+        "Location": { "type": "string" },
+        "Customer_name": { "type": "string" },
+        "Customer_no": { "type": "integer" },
+        "processor": { "type": "string" }
+      },
+      "required": ["date", "Construction_project", "Location", "Customer_name", "Customer_no", "processor"]
     },
-    "projectName": {
-      "type": "string",
-      "description": "Name of the construction project"
-    },
-    "contractor": {
-      "type": "string",
-      "description": "Contractor company name"
-    },
-    "items": {
+    "partial_list": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "description": {
-            "type": "string"
+          "list_name": { "type": ["string", "null"] },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "STK": { "type": "integer" },
+                "name": { "type": "string" },
+                "sku": { "type": "string" },
+                "width": { "type": "number" },
+                "width_unit": { "type": "string" },
+                "height": { "type": "number" },
+                "height_unit": { "type": "string" },
+                "length": { "type": "number" },
+                "length_unit": { "type": "string" },
+                "total_length": { "type": ["number", "null"] },
+                "total_length_unit": { "type": ["string", "null"] },
+                "volume": { "type": "number" },
+                "volume_unit": { "type": "string" }
+              },
+              "required": ["STK", "name", "sku", "width", "width_unit", "height", "height_unit", "length", "length_unit", "volume", "volume_unit"]
+            }
           },
-          "quantity": {
-            "type": "number"
-          },
-          "unit": {
-            "type": "string"
-          },
-          "unitPrice": {
-            "type": "number"
-          },
-          "totalPrice": {
-            "type": "number"
+          "partial_list_total": {
+            "type": ["object", "null"],
+            "properties": {
+              "STK": { "type": "integer" },
+              "total_length": { "type": "number" },
+              "total_length_unit": { "type": ["string", "null"] },
+              "total_volume": { "type": "number" },
+              "total_volume_unit": { "type": ["string", "null"] },
+              "total_area": { "type": "number" },
+              "total_area_unit": { "type": ["string", "null"] },
+              "SBruttoL": { "type": "number" },
+              "SBruttoL_unit": { "type": ["string", "null"] }
+            },
+            "required": ["STK", "total_length", "total_volume", "total_area", "SBruttoL"]
           }
         },
-        "required": ["description", "quantity"]
+        "required": ["items"]
       }
     },
-    "totalAmount": {
-      "type": "number",
-      "description": "Total order amount"
-    },
-    "notes": {
-      "type": "string",
-      "description": "Additional notes or comments"
+    "total_OrderList": {
+      "type": "object",
+      "properties": {
+        "STK": { "type": "integer" },
+        "total_length": { "type": "number" },
+        "total_length_unit": { "type": ["string", "null"] },
+        "total_volume": { "type": "number" },
+        "total_volume_unit": { "type": ["string", "null"] },
+        "total_area": { "type": "number" },
+        "total_area_unit": { "type": ["string", "null"] },
+        "SBruttoL": { "type": "number" },
+        "SBruttoL_unit": { "type": ["string", "null"] }
+      },
+      "required": ["STK", "total_length", "total_volume", "total_area", "SBruttoL"]
     }
   },
-  "required": ["orderNumber", "date"]
+  "required": ["contactInfo", "order", "partial_list", "total_OrderList"]
 }

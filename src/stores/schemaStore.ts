@@ -8,10 +8,12 @@ import { ref, computed } from 'vue'
 import type { ZodType } from 'zod'
 import type { JsonSchema } from '@/types/models'
 import { saveSchema, getSchema, getAllSchemas, deleteSchema } from '@/db'
-import { cleanJsonSchemaForOllama, convertZodToOllamaSchema } from '@/utils/schemaConverter'
+import { cleanJsonSchemaForOllama, zodToOllamaSchema } from '@/utils/schemaConverter'
+import { OrderListSchema } from '@/schemas/orderList'
 
 /**
  * Default construction order schema ID
+ * Note: Kept as 'construction-order' for backward compatibility with existing data
  */
 export const DEFAULT_SCHEMA_ID = 'construction-order'
 
@@ -34,27 +36,24 @@ export const useSchemaStore = defineStore('schema', () => {
   const hasSchemas = computed(() => schemas.value.length > 0)
 
   /**
-   * Load the default schema from public/schemas
+   * Load the default schema from Zod definition
+   * Uses zodToOllamaSchema to generate JSON schema (like Pydantic's model_json_schema())
    */
   async function loadDefaultSchema(): Promise<JsonSchema | null> {
     try {
-      const response = await fetch('/schemas/construction-order.json')
-      if (!response.ok) {
-        throw new Error('Failed to load default schema')
-      }
-      
-      const schemaContent = await response.json()
+      // Generate schema from Zod (like Pydantic's model_json_schema())
+      const schemaContent = zodToOllamaSchema(OrderListSchema)
       
       const defaultSchema: JsonSchema = {
         id: DEFAULT_SCHEMA_ID,
-        name: 'Construction Order',
-        description: 'Default schema for construction order documents',
+        name: 'Order List',
+        description: 'Schema for construction order documents (matches Python Pydantic)',
         schema: schemaContent
       }
       
       return defaultSchema
     } catch (err) {
-      console.error('Failed to load default schema:', err)
+      console.error('Failed to generate default schema:', err)
       return null
     }
   }
@@ -209,7 +208,7 @@ export const useSchemaStore = defineStore('schema', () => {
     zodSchema: ZodType,
     description?: string
   ): Promise<void> {
-    const jsonSchema = convertZodToOllamaSchema(zodSchema)
+    const jsonSchema = zodToOllamaSchema(zodSchema)
     
     const schema: JsonSchema = {
       id,
