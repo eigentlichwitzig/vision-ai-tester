@@ -5,8 +5,10 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import type { ZodType } from 'zod'
 import type { JsonSchema } from '@/types/models'
 import { saveSchema, getSchema, getAllSchemas, deleteSchema } from '@/db'
+import { cleanJsonSchemaForOllama, convertZodToOllamaSchema } from '@/utils/schemaConverter'
 
 /**
  * Default construction order schema ID
@@ -186,6 +188,39 @@ export const useSchemaStore = defineStore('schema', () => {
     error.value = null
   }
 
+  /**
+   * Get the active schema cleaned for Ollama compatibility
+   * Removes meta-fields like $schema that may cause issues
+   */
+  function getActiveSchemaForOllama(): object | null {
+    if (!activeSchema.value?.schema) {
+      return null
+    }
+    return cleanJsonSchemaForOllama(activeSchema.value.schema)
+  }
+
+  /**
+   * Register a Zod schema and convert it to JSON schema
+   * Useful for type-safe schema definitions
+   */
+  async function addZodSchema(
+    id: string,
+    name: string,
+    zodSchema: ZodType,
+    description?: string
+  ): Promise<void> {
+    const jsonSchema = convertZodToOllamaSchema(zodSchema)
+    
+    const schema: JsonSchema = {
+      id,
+      name,
+      description,
+      schema: jsonSchema
+    }
+    
+    await addSchema(schema)
+  }
+
   return {
     // State
     schemas,
@@ -201,11 +236,13 @@ export const useSchemaStore = defineStore('schema', () => {
     // Actions
     initializeSchemas,
     addSchema,
+    addZodSchema,
     updateSchema,
     removeSchema,
     setActiveSchema,
     getSchemaById,
     validateAgainstSchema,
+    getActiveSchemaForOllama,
     clearError
   }
 })
