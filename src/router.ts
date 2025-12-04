@@ -15,6 +15,11 @@ const router = createRouter({
       component: () => import('./views/HistoryView.vue')
     },
     {
+      path: '/history/:id',
+      name: 'history-details',
+      component: () => import('./views/HistoryDetailsView.vue')
+    },
+    {
       path: '/compare',
       name: 'compare',
       component: () => import('./views/CompareView.vue')

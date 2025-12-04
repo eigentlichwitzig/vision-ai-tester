@@ -84,10 +84,10 @@ function handlePageChange(page: number) {
  */
 async function viewRun(run: TestRun) {
   try {
-    // Navigate to main view and load the run
-    await router.push({ name: 'test-suite', query: { loadRun: run.id } })
+    // Navigate to the details view
+    await router.push({ name: 'history-details', params: { id: run.id } })
   } catch (err) {
-    console.error('Failed to navigate to test run:', err)
+    console.error('Failed to navigate to test run details:', err)
   }
 }
 
