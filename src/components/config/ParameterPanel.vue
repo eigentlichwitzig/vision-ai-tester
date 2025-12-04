@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useConfigStore } from '@/stores/configStore'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseSlider from '@/components/base/BaseSlider.vue'
@@ -31,7 +31,7 @@ const CONTEXT_WINDOW_MIN = 2048
 const CONTEXT_WINDOW_MAX = 32768
 const CONTEXT_WINDOW_STEP = 1024
 
-// Local reactive refs bound to store
+// Local reactive refs bound to store - for direct multimodal pipeline
 const temperature = computed({
   get: () => configStore.temperature,
   set: (value: number) => { configStore.temperature = value }
@@ -57,10 +57,61 @@ const userPrompt = computed({
   set: (value: string) => { configStore.userPrompt = value }
 })
 
-const ocrPrompt = computed({
-  get: () => configStore.ocrPrompt,
-  set: (value: string) => { configStore.ocrPrompt = value }
+// OCR step configuration bindings
+const ocrTemperature = computed({
+  get: () => configStore.ocrConfig.temperature,
+  set: (value: number) => { configStore.updateOcrConfig({ temperature: value }) }
 })
+
+const ocrMaxTokens = computed({
+  get: () => configStore.ocrConfig.maxTokens,
+  set: (value: number) => { configStore.updateOcrConfig({ maxTokens: value }) }
+})
+
+const ocrNumCtx = computed({
+  get: () => configStore.ocrConfig.numCtx,
+  set: (value: number) => { configStore.updateOcrConfig({ numCtx: value }) }
+})
+
+const ocrSystemPrompt = computed({
+  get: () => configStore.ocrConfig.systemPrompt,
+  set: (value: string) => { configStore.updateOcrConfig({ systemPrompt: value }) }
+})
+
+const ocrUserPrompt = computed({
+  get: () => configStore.ocrConfig.userPrompt,
+  set: (value: string) => { configStore.updateOcrConfig({ userPrompt: value }) }
+})
+
+// Parse step configuration bindings
+const parseTemperature = computed({
+  get: () => configStore.parseConfig.temperature,
+  set: (value: number) => { configStore.updateParseConfig({ temperature: value }) }
+})
+
+const parseMaxTokens = computed({
+  get: () => configStore.parseConfig.maxTokens,
+  set: (value: number) => { configStore.updateParseConfig({ maxTokens: value }) }
+})
+
+const parseNumCtx = computed({
+  get: () => configStore.parseConfig.numCtx,
+  set: (value: number) => { configStore.updateParseConfig({ numCtx: value }) }
+})
+
+const parseSystemPrompt = computed({
+  get: () => configStore.parseConfig.systemPrompt,
+  set: (value: string) => { configStore.updateParseConfig({ systemPrompt: value }) }
+})
+
+const parseUserPrompt = computed({
+  get: () => configStore.parseConfig.userPrompt,
+  set: (value: string) => { configStore.updateParseConfig({ userPrompt: value }) }
+})
+
+// Accordion state for OCR pipeline sections
+const ocrSectionExpanded = ref(true)
+const parseSectionExpanded = ref(true)
 
 // Advanced options toggle - use computed to stay in sync with store
 const showAdvanced = computed({
@@ -91,93 +142,304 @@ const temperatureMarks = {
 
 <template>
   <div class="space-y-4">
-    <!-- Model Parameters Section -->
-    <BaseCard title="Model Parameters" subtitle="Configure inference settings">
-      <div class="space-y-6">
-        <!-- Temperature Slider -->
-        <div>
-          <BaseSlider
-            v-model="temperature"
-            :min="TEMPERATURE_MIN"
-            :max="TEMPERATURE_MAX"
-            :step="TEMPERATURE_STEP"
-            :disabled="disabled"
-            label="Temperature"
-            :marks="temperatureMarks"
-          />
-          <p class="mt-1 text-xs text-gray-500">
-            Higher = more creative, Lower = more deterministic
-          </p>
+    <!-- Direct Multimodal Pipeline Configuration -->
+    <template v-if="!configStore.isOcrPipeline">
+      <!-- Model Parameters Section -->
+      <BaseCard title="Model Parameters" subtitle="Configure inference settings">
+        <div class="space-y-6">
+          <!-- Temperature Slider -->
+          <div>
+            <BaseSlider
+              v-model="temperature"
+              :min="TEMPERATURE_MIN"
+              :max="TEMPERATURE_MAX"
+              :step="TEMPERATURE_STEP"
+              :disabled="disabled"
+              label="Temperature"
+              :marks="temperatureMarks"
+            />
+            <p class="mt-1 text-xs text-gray-500">
+              Higher = more creative, Lower = more deterministic
+            </p>
+          </div>
+
+          <!-- Max Tokens Slider -->
+          <div>
+            <BaseSlider
+              v-model="maxTokens"
+              :min="MAX_TOKENS_MIN"
+              :max="MAX_TOKENS_MAX"
+              :step="MAX_TOKENS_STEP"
+              :disabled="disabled"
+              label="Max Tokens"
+            />
+            <p class="mt-1 text-xs text-gray-500">
+              Maximum tokens in response
+            </p>
+          </div>
+
+          <!-- Context Window Slider -->
+          <div>
+            <BaseSlider
+              v-model="numCtx"
+              :min="CONTEXT_WINDOW_MIN"
+              :max="CONTEXT_WINDOW_MAX"
+              :step="CONTEXT_WINDOW_STEP"
+              :disabled="disabled"
+              label="Context Window"
+            />
+            <p class="mt-1 text-xs text-gray-500">
+              Context window size for model
+            </p>
+          </div>
         </div>
+      </BaseCard>
 
-        <!-- Max Tokens Slider -->
-        <div>
-          <BaseSlider
-            v-model="maxTokens"
-            :min="MAX_TOKENS_MIN"
-            :max="MAX_TOKENS_MAX"
-            :step="MAX_TOKENS_STEP"
-            :disabled="disabled"
-            label="Max Tokens"
-          />
-          <p class="mt-1 text-xs text-gray-500">
-            Maximum tokens in response
-          </p>
-        </div>
+      <!-- System Prompt Section -->
+      <BaseCard title="System Prompt">
+        <PromptEditor
+          v-model="systemPrompt"
+          placeholder="Enter system prompt..."
+          :disabled="disabled"
+          :rows="6"
+          description="Instructions for the model's behavior and output format"
+        />
+      </BaseCard>
 
-        <!-- Context Window Slider -->
-        <div>
-          <BaseSlider
-            v-model="numCtx"
-            :min="CONTEXT_WINDOW_MIN"
-            :max="CONTEXT_WINDOW_MAX"
-            :step="CONTEXT_WINDOW_STEP"
-            :disabled="disabled"
-            label="Context Window"
-          />
-          <p class="mt-1 text-xs text-gray-500">
-            Context window size for model
-          </p>
-        </div>
-      </div>
-    </BaseCard>
+      <!-- User Prompt Section -->
+      <BaseCard title="User Prompt">
+        <PromptEditor
+          v-model="userPrompt"
+          placeholder="Enter user prompt..."
+          :disabled="disabled"
+          :rows="3"
+          description="The task instruction sent with each document"
+        />
+      </BaseCard>
+    </template>
 
-    <!-- System Prompt Section -->
-    <BaseCard title="System Prompt">
-      <PromptEditor
-        v-model="systemPrompt"
-        placeholder="Enter system prompt..."
-        :disabled="disabled"
-        :rows="6"
-        description="Instructions for the model's behavior and output format"
-      />
-    </BaseCard>
+    <!-- OCR Pipeline Configuration -->
+    <template v-else>
+      <!-- Vision Model (OCR Step) Section -->
+      <BaseCard>
+        <template #header>
+          <button
+            type="button"
+            class="w-full flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded"
+            :aria-expanded="ocrSectionExpanded"
+            @click="ocrSectionExpanded = !ocrSectionExpanded"
+          >
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
+                  1
+                </span>
+                <h3 class="text-lg font-semibold text-gray-900">
+                  Vision Model (OCR Step)
+                </h3>
+              </div>
+              <p class="mt-1 text-sm text-gray-500 ml-8">
+                Extracts text from document images
+              </p>
+            </div>
+            <i
+              :class="[
+                'pi transition-transform duration-200 text-gray-500',
+                ocrSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'
+              ]"
+              aria-hidden="true"
+            />
+          </button>
+        </template>
 
-    <!-- User Prompt Section -->
-    <BaseCard title="User Prompt">
-      <PromptEditor
-        v-model="userPrompt"
-        placeholder="Enter user prompt..."
-        :disabled="disabled"
-        :rows="3"
-        description="The task instruction sent with each document"
-      />
-    </BaseCard>
+        <transition
+          enter-active-class="transition-all duration-300 ease-out"
+          enter-from-class="opacity-0 max-h-0"
+          enter-to-class="opacity-100"
+          leave-active-class="transition-all duration-200 ease-in"
+          leave-from-class="opacity-100"
+          leave-to-class="opacity-0 max-h-0"
+        >
+          <div v-if="ocrSectionExpanded" class="space-y-6">
+            <!-- OCR Parameters -->
+            <div class="space-y-4 p-4 bg-blue-50 rounded-lg">
+              <h4 class="text-sm font-medium text-blue-800">OCR Model Parameters</h4>
+              
+              <!-- Temperature Slider -->
+              <div>
+                <BaseSlider
+                  v-model="ocrTemperature"
+                  :min="TEMPERATURE_MIN"
+                  :max="TEMPERATURE_MAX"
+                  :step="TEMPERATURE_STEP"
+                  :disabled="disabled"
+                  label="Temperature"
+                  :marks="temperatureMarks"
+                />
+              </div>
 
-    <!-- OCR Prompt Section (conditional) -->
-    <BaseCard
-      v-if="showOcrPrompt"
-      title="OCR Prompt"
-      subtitle="OCR Pipeline only"
-    >
-      <PromptEditor
-        v-model="ocrPrompt"
-        placeholder="Enter OCR prompt..."
-        :disabled="disabled"
-        :rows="3"
-        description="Instructions for text extraction from documents"
-      />
-    </BaseCard>
+              <!-- Max Tokens Slider -->
+              <div>
+                <BaseSlider
+                  v-model="ocrMaxTokens"
+                  :min="MAX_TOKENS_MIN"
+                  :max="MAX_TOKENS_MAX"
+                  :step="MAX_TOKENS_STEP"
+                  :disabled="disabled"
+                  label="Max Tokens"
+                />
+              </div>
+
+              <!-- Context Window Slider -->
+              <div>
+                <BaseSlider
+                  v-model="ocrNumCtx"
+                  :min="CONTEXT_WINDOW_MIN"
+                  :max="CONTEXT_WINDOW_MAX"
+                  :step="CONTEXT_WINDOW_STEP"
+                  :disabled="disabled"
+                  label="Context Window"
+                />
+              </div>
+            </div>
+
+            <!-- OCR System Prompt -->
+            <div>
+              <PromptEditor
+                v-model="ocrSystemPrompt"
+                label="System Prompt"
+                placeholder="Enter OCR system prompt..."
+                :disabled="disabled"
+                :rows="4"
+                description="Instructions for the OCR model's behavior"
+              />
+            </div>
+
+            <!-- OCR User Prompt -->
+            <div>
+              <PromptEditor
+                v-model="ocrUserPrompt"
+                label="User Prompt"
+                placeholder="Enter OCR user prompt..."
+                :disabled="disabled"
+                :rows="2"
+                description="Task instruction for text extraction"
+              />
+            </div>
+          </div>
+        </transition>
+      </BaseCard>
+
+      <!-- Parse Model (Parsing Step) Section -->
+      <BaseCard>
+        <template #header>
+          <button
+            type="button"
+            class="w-full flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded"
+            :aria-expanded="parseSectionExpanded"
+            @click="parseSectionExpanded = !parseSectionExpanded"
+          >
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
+                  2
+                </span>
+                <h3 class="text-lg font-semibold text-gray-900">
+                  Parse Model (Parsing Step)
+                </h3>
+              </div>
+              <p class="mt-1 text-sm text-gray-500 ml-8">
+                Converts extracted text into structured JSON
+              </p>
+            </div>
+            <i
+              :class="[
+                'pi transition-transform duration-200 text-gray-500',
+                parseSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'
+              ]"
+              aria-hidden="true"
+            />
+          </button>
+        </template>
+
+        <transition
+          enter-active-class="transition-all duration-300 ease-out"
+          enter-from-class="opacity-0 max-h-0"
+          enter-to-class="opacity-100"
+          leave-active-class="transition-all duration-200 ease-in"
+          leave-from-class="opacity-100"
+          leave-to-class="opacity-0 max-h-0"
+        >
+          <div v-if="parseSectionExpanded" class="space-y-6">
+            <!-- Parse Parameters -->
+            <div class="space-y-4 p-4 bg-green-50 rounded-lg">
+              <h4 class="text-sm font-medium text-green-800">Parse Model Parameters</h4>
+              
+              <!-- Temperature Slider -->
+              <div>
+                <BaseSlider
+                  v-model="parseTemperature"
+                  :min="TEMPERATURE_MIN"
+                  :max="TEMPERATURE_MAX"
+                  :step="TEMPERATURE_STEP"
+                  :disabled="disabled"
+                  label="Temperature"
+                  :marks="temperatureMarks"
+                />
+              </div>
+
+              <!-- Max Tokens Slider -->
+              <div>
+                <BaseSlider
+                  v-model="parseMaxTokens"
+                  :min="MAX_TOKENS_MIN"
+                  :max="MAX_TOKENS_MAX"
+                  :step="MAX_TOKENS_STEP"
+                  :disabled="disabled"
+                  label="Max Tokens"
+                />
+              </div>
+
+              <!-- Context Window Slider -->
+              <div>
+                <BaseSlider
+                  v-model="parseNumCtx"
+                  :min="CONTEXT_WINDOW_MIN"
+                  :max="CONTEXT_WINDOW_MAX"
+                  :step="CONTEXT_WINDOW_STEP"
+                  :disabled="disabled"
+                  label="Context Window"
+                />
+              </div>
+            </div>
+
+            <!-- Parse System Prompt -->
+            <div>
+              <PromptEditor
+                v-model="parseSystemPrompt"
+                label="System Prompt"
+                placeholder="Enter parse system prompt..."
+                :disabled="disabled"
+                :rows="6"
+                description="Instructions for parsing text into structured JSON"
+              />
+            </div>
+
+            <!-- Parse User Prompt -->
+            <div>
+              <PromptEditor
+                v-model="parseUserPrompt"
+                label="User Prompt"
+                placeholder="Enter parse user prompt..."
+                :disabled="disabled"
+                :rows="2"
+                description="Task instruction for JSON extraction"
+              />
+            </div>
+          </div>
+        </transition>
+      </BaseCard>
+    </template>
 
     <!-- Action Buttons -->
     <div class="flex items-center justify-between pt-2">

@@ -83,12 +83,21 @@ async function handleRunTest(): Promise<void> {
         file: configStore.currentFile,
         ocrModel: configStore.selectedOcrModel,
         parseModel: configStore.selectedParseModel,
-        ocrPrompt: configStore.ocrPrompt,
-        systemPrompt: configStore.systemPrompt,
-        userPrompt: configStore.userPrompt,
-        temperature: configStore.temperature,
-        maxTokens: configStore.maxTokens,
-        numCtx: configStore.numCtx
+        // Pass separate OCR and Parse configurations
+        ocrConfig: {
+          temperature: configStore.ocrConfig.temperature,
+          maxTokens: configStore.ocrConfig.maxTokens,
+          numCtx: configStore.ocrConfig.numCtx,
+          systemPrompt: configStore.ocrConfig.systemPrompt,
+          userPrompt: configStore.ocrConfig.userPrompt
+        },
+        parseConfig: {
+          temperature: configStore.parseConfig.temperature,
+          maxTokens: configStore.parseConfig.maxTokens,
+          numCtx: configStore.parseConfig.numCtx,
+          systemPrompt: configStore.parseConfig.systemPrompt,
+          userPrompt: configStore.parseConfig.userPrompt
+        }
       })
     }
   } catch (err) {

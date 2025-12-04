@@ -17,6 +17,29 @@ export interface ValidationError {
   params?: object         // Additional error details
 }
 
+/**
+ * Configuration for OCR step in the OCR→Parse pipeline
+ */
+export interface OcrPipelineConfig {
+  temperature: number
+  maxTokens: number
+  numCtx: number
+  systemPrompt: string
+  userPrompt: string
+}
+
+/**
+ * Configuration for Parse step in the OCR→Parse pipeline
+ */
+export interface ParsePipelineConfig {
+  temperature: number
+  maxTokens: number
+  numCtx: number
+  systemPrompt: string
+  userPrompt: string
+  schemaId?: string
+}
+
 export interface TestParameters {
   temperature: number
   maxTokens?: number
@@ -24,6 +47,10 @@ export interface TestParameters {
   systemPrompt: string
   userPrompt: string
   schemaId?: string
+  
+  // Separate parameters for OCR pipeline
+  ocrParameters?: OcrPipelineConfig
+  parseParameters?: ParsePipelineConfig
 }
 
 export interface TestInput {

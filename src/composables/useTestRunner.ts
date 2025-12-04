@@ -50,20 +50,56 @@ export interface OcrPipelineParams {
   ocrModel?: string
   /** Parse model name (e.g., 'qwen2.5:7b') */
   parseModel?: string
-  /** OCR prompt for text extraction */
+  /** 
+   * @deprecated Use ocrConfig.userPrompt instead
+   * OCR prompt for text extraction 
+   */
   ocrPrompt?: string
-  /** System prompt for parsing step */
+  /** 
+   * @deprecated Use parseConfig.systemPrompt instead
+   * System prompt for parsing step 
+   */
   systemPrompt?: string
-  /** User prompt for parsing step */
+  /** 
+   * @deprecated Use parseConfig.userPrompt instead
+   * User prompt for parsing step 
+   */
   userPrompt?: string
-  /** Temperature (0 for deterministic output) */
+  /** 
+   * @deprecated Use ocrConfig/parseConfig temperature instead
+   * Temperature (0 for deterministic output) 
+   */
   temperature?: number
-  /** Maximum tokens to generate */
+  /** 
+   * @deprecated Use ocrConfig/parseConfig maxTokens instead
+   * Maximum tokens to generate 
+   */
   maxTokens?: number
-  /** Context window size */
+  /** 
+   * @deprecated Use ocrConfig/parseConfig numCtx instead
+   * Context window size 
+   */
   numCtx?: number
   /** JSON schema for structured output */
   schema?: object
+  
+  /** Separate OCR step configuration */
+  ocrConfig?: {
+    temperature: number
+    maxTokens: number
+    numCtx: number
+    systemPrompt: string
+    userPrompt: string
+  }
+  
+  /** Separate Parse step configuration */
+  parseConfig?: {
+    temperature: number
+    maxTokens: number
+    numCtx: number
+    systemPrompt: string
+    userPrompt: string
+  }
 }
 
 /**
@@ -502,16 +538,24 @@ export function useTestRunner() {
       } as PipelineError
     }
 
-    // Get configuration with fallbacks
+    // Get configuration with fallbacks - use separate configs if available
     const ocrModel = params.ocrModel ?? configStore.selectedOcrModel
     const parseModel = params.parseModel ?? configStore.selectedParseModel
-    const ocrPrompt = params.ocrPrompt ?? configStore.ocrPrompt
-    const systemPrompt = params.systemPrompt ?? configStore.systemPrompt
-    const userPrompt = params.userPrompt ?? configStore.userPrompt
-    const temperature = params.temperature ?? configStore.temperature
-    const maxTokens = params.maxTokens ?? configStore.maxTokens
-    const numCtx = params.numCtx ?? configStore.numCtx
     const schema = params.schema ?? schemaStore.activeSchema?.schema
+    
+    // OCR step configuration (prioritize ocrConfig, then legacy params, then store defaults)
+    const ocrTemperature = params.ocrConfig?.temperature ?? params.temperature ?? configStore.ocrConfig.temperature
+    const ocrMaxTokens = params.ocrConfig?.maxTokens ?? params.maxTokens ?? configStore.ocrConfig.maxTokens
+    const ocrNumCtx = params.ocrConfig?.numCtx ?? params.numCtx ?? configStore.ocrConfig.numCtx
+    const ocrSystemPrompt = params.ocrConfig?.systemPrompt ?? configStore.ocrConfig.systemPrompt
+    const ocrUserPrompt = params.ocrConfig?.userPrompt ?? params.ocrPrompt ?? configStore.ocrConfig.userPrompt
+    
+    // Parse step configuration (prioritize parseConfig, then legacy params, then store defaults)
+    const parseTemperature = params.parseConfig?.temperature ?? params.temperature ?? configStore.parseConfig.temperature
+    const parseMaxTokens = params.parseConfig?.maxTokens ?? params.maxTokens ?? configStore.parseConfig.maxTokens
+    const parseNumCtx = params.parseConfig?.numCtx ?? params.numCtx ?? configStore.parseConfig.numCtx
+    const parseSystemPrompt = params.parseConfig?.systemPrompt ?? params.systemPrompt ?? configStore.parseConfig.systemPrompt
+    const parseUserPrompt = params.parseConfig?.userPrompt ?? params.userPrompt ?? configStore.parseConfig.userPrompt
 
     // Reset state
     error.value = null
@@ -530,18 +574,33 @@ export function useTestRunner() {
       thumbnail: params.file.thumbnail
     }
 
-    // Create test run record
+    // Create test run record with separate OCR and Parse parameters
     const testRun = testStore.createTestRun({
       modelName: parseModel,
       pipeline: 'ocr-then-parse',
       ocrModel: ocrModel,
       parameters: {
-        temperature,
-        maxTokens,
-        numCtx,
-        systemPrompt,
-        userPrompt,
-        schemaId: configStore.selectedSchemaId || undefined
+        temperature: parseTemperature,
+        maxTokens: parseMaxTokens,
+        numCtx: parseNumCtx,
+        systemPrompt: parseSystemPrompt,
+        userPrompt: parseUserPrompt,
+        schemaId: configStore.selectedSchemaId || undefined,
+        ocrParameters: {
+          temperature: ocrTemperature,
+          maxTokens: ocrMaxTokens,
+          numCtx: ocrNumCtx,
+          systemPrompt: ocrSystemPrompt,
+          userPrompt: ocrUserPrompt
+        },
+        parseParameters: {
+          temperature: parseTemperature,
+          maxTokens: parseMaxTokens,
+          numCtx: parseNumCtx,
+          systemPrompt: parseSystemPrompt,
+          userPrompt: parseUserPrompt,
+          schemaId: configStore.selectedSchemaId || undefined
+        }
       },
       input: testInput
     })
@@ -558,11 +617,15 @@ export function useTestRunner() {
       // STEP 1: OCR Extraction
       // ==========================================
       
-      // Build OCR request
+      // Build OCR request with OCR-specific configuration
       const ocrMessages: OllamaMessage[] = [
         {
+          role: 'system',
+          content: ocrSystemPrompt
+        },
+        {
           role: 'user',
-          content: ocrPrompt,
+          content: ocrUserPrompt,
           images: [base64Image]
         }
       ]
@@ -572,9 +635,9 @@ export function useTestRunner() {
         messages: ocrMessages,
         stream: false,
         options: {
-          temperature,
-          num_predict: maxTokens,
-          num_ctx: numCtx
+          temperature: ocrTemperature,
+          num_predict: ocrMaxTokens,
+          num_ctx: ocrNumCtx
         }
       }
 
@@ -645,15 +708,15 @@ export function useTestRunner() {
       currentStep.value = 'Step 2/2: Parsing text into JSON...'
       progressPercent.value = 50
 
-      // Build parse request with extracted text
+      // Build parse request with extracted text using Parse-specific configuration
       const parseMessages: OllamaMessage[] = [
         {
           role: 'system',
-          content: systemPrompt
+          content: parseSystemPrompt
         },
         {
           role: 'user',
-          content: `${userPrompt}\n\nText:\n${ocrText}`
+          content: `${parseUserPrompt}\n\nText:\n${ocrText}`
         }
       ]
 
@@ -662,9 +725,9 @@ export function useTestRunner() {
         messages: parseMessages,
         stream: false,
         options: {
-          temperature,
-          num_predict: maxTokens,
-          num_ctx: numCtx
+          temperature: parseTemperature,
+          num_predict: parseMaxTokens,
+          num_ctx: parseNumCtx
         }
       }
 
