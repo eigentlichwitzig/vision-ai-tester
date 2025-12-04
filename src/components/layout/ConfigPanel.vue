@@ -136,7 +136,7 @@ watch(() => configStore.currentFile, () => {
           v-if="configStore.currentFile"
           :file-data="configStore.currentFile"
           :max-width="400"
-          :max-height="300"
+          :max-height="500"
         />
         <div class="flex justify-end">
           <BaseButton

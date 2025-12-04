@@ -2,6 +2,7 @@
 /**
  * ImagePreview Component
  * Renders image files with dimensions and aspect ratio information
+ * Supports thumbnail display for large images (>1MB)
  */
 
 import { computed, ref, watch, onUnmounted } from 'vue'
@@ -18,11 +19,14 @@ interface Props {
   maxWidth?: number
   /** Maximum display height in pixels */
   maxHeight?: number
+  /** Optional thumbnail data URI for large images */
+  thumbnail?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  maxWidth: 800,
-  maxHeight: 600
+  maxWidth: 400,
+  maxHeight: 500,
+  thumbnail: undefined
 })
 
 const emit = defineEmits<{
@@ -36,6 +40,7 @@ const hasError = ref(false)
 const errorMessage = ref('')
 const dimensions = ref<ImageDimensions | null>(null)
 const dataUri = ref('')
+const isUsingThumbnail = ref(false)
 
 // Computed
 const displayDimensions = computed(() => {
@@ -72,10 +77,17 @@ async function loadImage(): Promise<void> {
   errorMessage.value = ''
   
   try {
-    // Convert base64 to data URI for browser rendering
-    dataUri.value = base64ToDataUri(props.base64Content, props.mimeType)
+    // Use thumbnail if available (for large images >1MB)
+    if (props.thumbnail) {
+      dataUri.value = props.thumbnail
+      isUsingThumbnail.value = true
+    } else {
+      // Convert base64 to data URI for browser rendering
+      dataUri.value = base64ToDataUri(props.base64Content, props.mimeType)
+      isUsingThumbnail.value = false
+    }
     
-    // Get image dimensions
+    // Get image dimensions from displayed image (thumbnail or original)
     const dims = await getImageDimensions(dataUri.value)
     
     if (!dims) {
@@ -167,6 +179,9 @@ onUnmounted(() => {
 <style scoped>
 .image-preview {
   width: 100%;
+  max-width: 400px;
+  max-height: 500px;
+  overflow: auto;
 }
 
 .skeleton-container {
@@ -194,5 +209,28 @@ onUnmounted(() => {
 
 .image-container img {
   object-fit: contain;
+  max-width: 100%;
+  max-height: 400px;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 1024px) {
+  .image-preview {
+    max-width: 300px;
+    max-height: 400px;
+  }
+  .image-container img {
+    max-height: 320px;
+  }
+}
+
+@media (max-width: 768px) {
+  .image-preview {
+    max-width: 250px;
+    max-height: 350px;
+  }
+  .image-container img {
+    max-height: 280px;
+  }
 }
 </style>

@@ -26,6 +26,11 @@ const DEFAULT_IMAGE_MIME_TYPES: Record<string, string> = {
 }
 
 /**
+ * Threshold for generating thumbnails (1MB)
+ */
+const THUMBNAIL_SIZE_THRESHOLD = 1 * 1024 * 1024
+
+/**
  * Convert raw base64 to Data URI for browser rendering
  * OPPOSITE of Task #6 - Task #6 strips prefix, Task #7 adds it back
  * 
@@ -169,4 +174,124 @@ export function calculateScaledDimensions(
     width: Math.round(width * scale),
     height: Math.round(height * scale)
   }
+}
+
+/**
+ * Check if file size requires thumbnail generation
+ * @param size - File size in bytes
+ * @returns True if thumbnail should be generated
+ */
+export function shouldGenerateThumbnail(size: number): boolean {
+  return size > THUMBNAIL_SIZE_THRESHOLD
+}
+
+/**
+ * Internal helper to render an image to canvas and generate thumbnail
+ * @param img - Loaded Image element
+ * @param maxWidth - Maximum thumbnail width
+ * @param maxHeight - Maximum thumbnail height
+ * @param quality - JPEG quality 0-1
+ * @returns Base64 data URI of thumbnail
+ */
+function renderThumbnailToCanvas(
+  img: HTMLImageElement,
+  maxWidth: number,
+  maxHeight: number,
+  quality: number
+): string {
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  
+  if (!ctx) {
+    throw new Error('Failed to get canvas context')
+  }
+  
+  // Calculate scaled dimensions maintaining aspect ratio
+  const scaled = calculateScaledDimensions(
+    { width: img.width, height: img.height },
+    maxWidth,
+    maxHeight
+  )
+  
+  canvas.width = scaled.width
+  canvas.height = scaled.height
+  ctx.drawImage(img, 0, 0, scaled.width, scaled.height)
+  
+  return canvas.toDataURL('image/jpeg', quality)
+}
+
+/**
+ * Generate a thumbnail from a File object
+ * Used for large images (>1MB) to improve preview performance
+ * 
+ * @param file - File object to generate thumbnail from
+ * @param maxWidth - Maximum thumbnail width (default: 400)
+ * @param maxHeight - Maximum thumbnail height (default: 500)
+ * @param quality - JPEG quality 0-1 (default: 0.8)
+ * @returns Promise with base64 data URI of thumbnail
+ */
+export async function generateThumbnail(
+  file: File,
+  maxWidth = 400,
+  maxHeight = 500,
+  quality = 0.8
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    
+    img.onload = () => {
+      try {
+        const result = renderThumbnailToCanvas(img, maxWidth, maxHeight, quality)
+        // Revoke object URL to prevent memory leaks
+        URL.revokeObjectURL(img.src)
+        resolve(result)
+      } catch (err) {
+        URL.revokeObjectURL(img.src)
+        reject(err)
+      }
+    }
+    
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src)
+      reject(new Error('Failed to load image for thumbnail generation'))
+    }
+    
+    img.src = URL.createObjectURL(file)
+  })
+}
+
+/**
+ * Generate thumbnail from base64 content
+ * 
+ * @param base64Content - Raw base64 content (without data URI prefix)
+ * @param mimeType - Original MIME type
+ * @param maxWidth - Maximum thumbnail width (default: 400)
+ * @param maxHeight - Maximum thumbnail height (default: 500)
+ * @param quality - JPEG quality 0-1 (default: 0.8)
+ * @returns Promise with base64 data URI of thumbnail
+ */
+export async function generateThumbnailFromBase64(
+  base64Content: string,
+  mimeType: string,
+  maxWidth = 400,
+  maxHeight = 500,
+  quality = 0.8
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    
+    img.onload = () => {
+      try {
+        resolve(renderThumbnailToCanvas(img, maxWidth, maxHeight, quality))
+      } catch (err) {
+        reject(err)
+      }
+    }
+    
+    img.onerror = () => {
+      reject(new Error('Failed to load image for thumbnail generation'))
+    }
+    
+    img.src = base64ToDataUri(base64Content, mimeType)
+  })
 }

@@ -12,6 +12,7 @@ import {
   WARNING_FILE_SIZE, 
   LARGE_FILE_SIZE 
 } from '@/utils/validators'
+import { generateThumbnail, shouldGenerateThumbnail } from '@/utils/imageUtils'
 
 /**
  * Default accepted file types
@@ -99,6 +100,17 @@ export function useFileUpload() {
         throw err
       }
 
+      // Generate thumbnail for large images (>1MB) to improve preview performance
+      let thumbnail: string | undefined
+      if (fileType === 'image' && shouldGenerateThumbnail(file.size)) {
+        try {
+          thumbnail = await generateThumbnail(file, 400, 500, 0.8)
+        } catch {
+          // Thumbnail generation failed, continue without it
+          console.warn('Thumbnail generation failed, using original image for preview')
+        }
+      }
+
       // Build FileUploadData
       const fileData: FileUploadData = {
         file,
@@ -108,6 +120,7 @@ export function useFileUpload() {
         size: file.size,
         sizeFormatted: formatFileSize(file.size),
         base64Content,
+        thumbnail,
         isLarge: file.size > WARNING_FILE_SIZE,
         isVeryLarge: file.size > LARGE_FILE_SIZE,
         timestamp: new Date()
