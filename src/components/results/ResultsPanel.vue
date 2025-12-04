@@ -39,9 +39,13 @@ const parsedData = computed(() => {
   return props.testRun?.output?.parsed ?? null
 })
 
-// Computed: Get raw response
+// Computed: Get raw response - always show if available
 const rawResponse = computed(() => {
-  return props.testRun?.output?.raw ?? ''
+  const raw = props.testRun?.output?.raw ?? ''
+  if (raw && props.testRun?.status === 'error' && !props.testRun?.output?.parsed) {
+    console.log('ℹ️ Displaying raw response for failed parse attempt')
+  }
+  return raw
 })
 
 // Computed: Get OCR text

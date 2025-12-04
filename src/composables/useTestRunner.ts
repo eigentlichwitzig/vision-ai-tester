@@ -425,45 +425,66 @@ export function useTestRunner() {
       // Extract response content
       const rawContent = response.data.message.content
 
-      // Build output object
+      console.log('🔍 Direct Pipeline - Raw response received')
+      console.log('  Length:', rawContent?.length ?? 0)
+      console.log('  Preview:', rawContent?.substring(0, 200))
+
+      // Build output object - ALWAYS populate raw content
       const output: TestOutput = {
-        raw: rawContent,
+        raw: rawContent || '',  // Ensure raw is always set
         promptTokens: response.data.prompt_eval_count,
         completionTokens: response.data.eval_count,
         totalDuration: response.data.total_duration
       }
 
-      // Try to parse JSON from response
-      try {
-        const parsed = parseJsonFromResponse(rawContent)
-        output.parsed = parsed
-
-        // Validate against schema if available
-        if (schema) {
-          const schemaValidator = useSchemaValidator()
-          const validResult = schemaValidator.validate(parsed, schema)
-          output.isValid = validResult
-          
-          if (!validResult) {
-            // Use toRaw() to unwrap Vue reactive proxy before assignment
-            // This prevents DataCloneError when saving to IndexedDB
-            output.validationErrors = toRaw(schemaValidator.errors.value)
-            output.error = 'JSON output failed schema validation - see validation errors for details'
-          } else {
-            output.validationErrors = []
-          }
-        } else {
-          // No schema to validate against - consider it valid
-          output.isValid = true
-          output.validationErrors = []
-        }
-      } catch (parseError) {
-        // JSON parsing failed - store error but don't fail the test
-        output.error = parseError instanceof Error 
-          ? parseError.message 
-          : 'Failed to parse response as JSON'
+      // Validate we have content
+      if (!rawContent || rawContent.trim().length === 0) {
+        output.error = 'Model returned empty response'
         output.isValid = false
-        output.validationErrors = []
+        console.error('❌ Empty response from model')
+      } else {
+        // Try to parse JSON from response
+        try {
+          const parsed = parseJsonFromResponse(rawContent)
+          output.parsed = parsed
+          console.log('✅ JSON parsed successfully')
+
+          // Validate against schema if available
+          if (schema) {
+            const schemaValidator = useSchemaValidator()
+            const validResult = schemaValidator.validate(parsed, schema)
+            output.isValid = validResult
+            
+            if (!validResult) {
+              // Use toRaw() to unwrap Vue reactive proxy before assignment
+              // This prevents DataCloneError when saving to IndexedDB
+              output.validationErrors = toRaw(schemaValidator.errors.value)
+              output.error = 'JSON output failed schema validation - see validation errors for details'
+              console.warn('⚠️ Schema validation failed:', output.validationErrors)
+            } else {
+              output.validationErrors = []
+              console.log('✅ Schema validation passed')
+            }
+          } else {
+            // No schema to validate against - consider it valid
+            output.isValid = true
+            output.validationErrors = []
+            console.log('ℹ️ No schema provided - skipping validation')
+          }
+        } catch (parseError) {
+          // JSON parsing failed - store error but keep raw content
+          const errorMessage = parseError instanceof Error 
+            ? parseError.message 
+            : 'Failed to parse response as JSON'
+          
+          output.error = errorMessage
+          output.isValid = false
+          output.validationErrors = []
+          
+          console.warn('⚠️ JSON parse failed:', errorMessage)
+          console.log('  Raw content will still be available for review')
+          // Note: We don't fail the test here - raw output is still valuable
+        }
       }
 
       // Disable cancel during save
@@ -783,46 +804,68 @@ export function useTestRunner() {
       // Extract parse response content
       const rawContent = parseResponse.data.message.content
 
-      // Build output object with OCR text
+      console.log('🔍 OCR Pipeline - Parse response received')
+      console.log('  Length:', rawContent?.length ?? 0)
+      console.log('  Preview:', rawContent?.substring(0, 200))
+      console.log('  OCR Text Length:', ocrText?.length ?? 0)
+
+      // Build output object with OCR text - ALWAYS populate raw and ocrText
       const output: TestOutput = {
-        raw: rawContent,
-        ocrText,
+        raw: rawContent || '',  // Ensure raw is always set
+        ocrText,  // Always include OCR text
         promptTokens: (ocrResponse.data.prompt_eval_count ?? 0) + (parseResponse.data.prompt_eval_count ?? 0),
         completionTokens: (ocrResponse.data.eval_count ?? 0) + (parseResponse.data.eval_count ?? 0),
         totalDuration: (ocrResponse.data.total_duration ?? 0) + (parseResponse.data.total_duration ?? 0)
       }
 
-      // Try to parse JSON from response
-      try {
-        const parsed = parseJsonFromResponse(rawContent)
-        output.parsed = parsed
-
-        // Validate against schema if available
-        if (schema) {
-          const schemaValidator = useSchemaValidator()
-          const validResult = schemaValidator.validate(parsed, schema)
-          output.isValid = validResult
-          
-          if (!validResult) {
-            // Use toRaw() to unwrap Vue reactive proxy before assignment
-            // This prevents DataCloneError when saving to IndexedDB
-            output.validationErrors = toRaw(schemaValidator.errors.value)
-            output.error = 'JSON output failed schema validation - see validation errors for details'
-          } else {
-            output.validationErrors = []
-          }
-        } else {
-          // No schema to validate against - consider it valid
-          output.isValid = true
-          output.validationErrors = []
-        }
-      } catch (parseError) {
-        // JSON parsing failed - store error but don't fail the test
-        output.error = parseError instanceof Error 
-          ? parseError.message 
-          : 'Failed to parse response as JSON'
+      // Validate we have content
+      if (!rawContent || rawContent.trim().length === 0) {
+        output.error = 'Parse model returned empty response'
         output.isValid = false
-        output.validationErrors = []
+        console.error('❌ Empty response from parse model')
+      } else {
+        // Try to parse JSON from response
+        try {
+          const parsed = parseJsonFromResponse(rawContent)
+          output.parsed = parsed
+          console.log('✅ JSON parsed successfully')
+
+          // Validate against schema if available
+          if (schema) {
+            const schemaValidator = useSchemaValidator()
+            const validResult = schemaValidator.validate(parsed, schema)
+            output.isValid = validResult
+            
+            if (!validResult) {
+              // Use toRaw() to unwrap Vue reactive proxy before assignment
+              // This prevents DataCloneError when saving to IndexedDB
+              output.validationErrors = toRaw(schemaValidator.errors.value)
+              output.error = 'JSON output failed schema validation - see validation errors for details'
+              console.warn('⚠️ Schema validation failed:', output.validationErrors)
+            } else {
+              output.validationErrors = []
+              console.log('✅ Schema validation passed')
+            }
+          } else {
+            // No schema to validate against - consider it valid
+            output.isValid = true
+            output.validationErrors = []
+            console.log('ℹ️ No schema provided - skipping validation')
+          }
+        } catch (parseError) {
+          // JSON parsing failed - store error but keep raw content
+          const errorMessage = parseError instanceof Error 
+            ? parseError.message 
+            : 'Failed to parse response as JSON'
+          
+          output.error = errorMessage
+          output.isValid = false
+          output.validationErrors = []
+          
+          console.warn('⚠️ JSON parse failed:', errorMessage)
+          console.log('  Raw content and OCR text will still be available for review')
+          // Note: We don't fail the test here - raw output is still valuable
+        }
       }
 
       // Disable cancel during save
