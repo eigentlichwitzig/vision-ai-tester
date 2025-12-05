@@ -91,14 +91,14 @@ function transformNullableType(schema: Record<string, unknown>): Record<string, 
  * - Removes empty required arrays
  */
 function deepCleanSchema(schema: unknown): unknown {
-  // Handle non-objects
-  if (!isObject(schema)) {
-    return schema
-  }
-  
-  // Handle arrays
+  // Handle arrays - process each element
   if (Array.isArray(schema)) {
     return schema.map(deepCleanSchema)
+  }
+  
+  // Handle non-objects (primitives)
+  if (!isObject(schema)) {
+    return schema
   }
   
   // Remove meta-fields from this level
