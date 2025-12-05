@@ -1,16 +1,15 @@
 /**
- * Ollama API client implementation
+ * Ollama API client implementation using official ollama package
  * Handles communication with the local Ollama server
  */
 
+import { Ollama } from 'ollama/browser'
 import type {
   OllamaChatRequest,
   OllamaChatResponse,
-  OllamaListResponse,
   OllamaModelInfo
 } from '@/types/ollama'
-import type { ApiResponse, ApiError, HealthError, HealthErrorCode } from './types'
-import { OLLAMA_ENDPOINTS } from './types'
+import type { ApiResponse, HealthError } from './types'
 
 /**
  * Default timeout for health check requests (5 seconds)
@@ -25,9 +24,16 @@ export function getOllamaBaseUrl(): string {
 }
 
 /**
- * Create an API error from a fetch error
+ * Create Ollama client instance
  */
-function createApiError(error: unknown): ApiError {
+function createOllamaClient(): Ollama {
+  return new Ollama({ host: getOllamaBaseUrl() })
+}
+
+/**
+ * Create an API error from an error
+ */
+function createApiError(error: unknown): { message: string; code: string } {
   if (error instanceof Error) {
     return {
       message: error.message,
@@ -45,15 +51,9 @@ function createApiError(error: unknown): ApiError {
  */
 export async function checkOllamaConnection(): Promise<ApiResponse<boolean>> {
   try {
-    const response = await fetch(`${getOllamaBaseUrl()}${OLLAMA_ENDPOINTS.TAGS}`)
-    if (response.ok) {
-      return { data: true, error: null, success: true }
-    }
-    return {
-      data: false,
-      error: { message: `Server responded with status ${response.status}`, code: 'CONNECTION_ERROR' },
-      success: false
-    }
+    const ollama = createOllamaClient()
+    await ollama.list()
+    return { data: true, error: null, success: true }
   } catch (error) {
     return {
       data: false,
@@ -68,18 +68,25 @@ export async function checkOllamaConnection(): Promise<ApiResponse<boolean>> {
  */
 export async function listModels(): Promise<ApiResponse<OllamaModelInfo[]>> {
   try {
-    const response = await fetch(`${getOllamaBaseUrl()}${OLLAMA_ENDPOINTS.TAGS}`)
-    
-    if (!response.ok) {
-      return {
-        data: null,
-        error: { message: `Failed to fetch models: ${response.statusText}`, code: 'FETCH_ERROR' },
-        success: false
-      }
-    }
+    const ollama = createOllamaClient()
+    const response = await ollama.list()
 
-    const data: OllamaListResponse = await response.json()
-    return { data: data.models, error: null, success: true }
+    // Map the official package response to our types
+    const models: OllamaModelInfo[] = response.models.map(model => ({
+      name: model.name,
+      modified_at: model.modified_at.toISOString(),
+      size: model.size,
+      digest: model.digest,
+      details: {
+        format: model.details.format,
+        family: model.details.family,
+        families: model.details.families || [],
+        parameter_size: model.details.parameter_size,
+        quantization_level: model.details.quantization_level
+      }
+    }))
+
+    return { data: models, error: null, success: true }
   } catch (error) {
     return {
       data: null,
@@ -94,28 +101,47 @@ export async function listModels(): Promise<ApiResponse<OllamaModelInfo[]>> {
  */
 export async function chat(request: OllamaChatRequest): Promise<ApiResponse<OllamaChatResponse>> {
   try {
-    const response = await fetch(`${getOllamaBaseUrl()}${OLLAMA_ENDPOINTS.CHAT}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        ...request,
-        stream: false // Always disable streaming for this client
-      })
+    const ollama = createOllamaClient()
+
+    // Build the request for the official package
+    const response = await ollama.chat({
+      model: request.model,
+      messages: request.messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        images: msg.images
+      })),
+      format: request.format, // Pass schema directly - the key fix!
+      stream: false,
+      options: request.options ? {
+        temperature: request.options.temperature,
+        num_predict: request.options.num_predict,
+        num_ctx: request.options.num_ctx,
+        top_k: request.options.top_k,
+        top_p: request.options.top_p
+      } : undefined,
+      think: request.think
     })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      return {
-        data: null,
-        error: { message: errorText || `Request failed: ${response.statusText}`, code: 'REQUEST_FAILED' },
-        success: false
-      }
+    // Map response to our types
+    const chatResponse: OllamaChatResponse = {
+      model: response.model,
+      created_at: response.created_at.toISOString(),
+      message: {
+        role: response.message.role,
+        content: response.message.content,
+        thinking: (response.message as { thinking?: string }).thinking
+      },
+      done: response.done,
+      total_duration: response.total_duration,
+      load_duration: response.load_duration,
+      prompt_eval_count: response.prompt_eval_count,
+      prompt_eval_duration: response.prompt_eval_duration,
+      eval_count: response.eval_count,
+      eval_duration: response.eval_duration
     }
 
-    const data: OllamaChatResponse = await response.json()
-    return { data, error: null, success: true }
+    return { data: chatResponse, error: null, success: true }
   } catch (error) {
     return {
       data: null,
@@ -138,43 +164,67 @@ export async function chatWithAbort(request: OllamaChatRequest): Promise<ApiResp
   if (currentAbortController) {
     currentAbortController.abort()
   }
-  
+
   currentAbortController = new AbortController()
-  
+
   try {
-    const response = await fetch(`${getOllamaBaseUrl()}${OLLAMA_ENDPOINTS.CHAT}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        ...request,
-        stream: false
-      }),
-      signal: currentAbortController.signal
+    const ollama = createOllamaClient()
+
+    // Debug logging for schema being sent
+    if (import.meta.env.DEV && request.format) {
+      console.log('📋 Schema being sent to Ollama:', JSON.stringify(request.format, null, 2))
+    }
+
+    // Build the request for the official package
+    const response = await ollama.chat({
+      model: request.model,
+      messages: request.messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        images: msg.images
+      })),
+      format: request.format, // Pass schema directly - the key fix!
+      stream: false,
+      options: request.options ? {
+        temperature: request.options.temperature,
+        num_predict: request.options.num_predict,
+        num_ctx: request.options.num_ctx,
+        top_k: request.options.top_k,
+        top_p: request.options.top_p
+      } : undefined,
+      think: request.think
     })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      return {
-        data: null,
-        error: { message: errorText || `Request failed: ${response.statusText}`, code: 'REQUEST_FAILED' },
-        success: false
-      }
+    // Map response to our types
+    const chatResponse: OllamaChatResponse = {
+      model: response.model,
+      created_at: response.created_at.toISOString(),
+      message: {
+        role: response.message.role,
+        content: response.message.content,
+        thinking: (response.message as { thinking?: string }).thinking
+      },
+      done: response.done,
+      total_duration: response.total_duration,
+      load_duration: response.load_duration,
+      prompt_eval_count: response.prompt_eval_count,
+      prompt_eval_duration: response.prompt_eval_duration,
+      eval_count: response.eval_count,
+      eval_duration: response.eval_duration
     }
 
-    const data: OllamaChatResponse = await response.json()
     if (import.meta.env.DEV) {
       console.log('📡 Ollama API response:', {
-        model: data.model,
-        messageRole: data.message?.role,
-        contentLength: data.message?.content?.length,
-        thinkingLength: data.message?.thinking?.length,
-        done: data.done,
-        evalCount: data.eval_count
+        model: chatResponse.model,
+        messageRole: chatResponse.message?.role,
+        contentLength: chatResponse.message?.content?.length,
+        thinkingLength: chatResponse.message?.thinking?.length,
+        done: chatResponse.done,
+        evalCount: chatResponse.eval_count
       })
     }
-    return { data, error: null, success: true }
+
+    return { data: chatResponse, error: null, success: true }
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       return {
@@ -205,7 +255,7 @@ export function cancelCurrentRequest(): void {
 
 /**
  * Parse connection errors and provide troubleshooting guidance
- * 
+ *
  * Note: Error detection relies on error types and names rather than messages
  * where possible, as messages can vary between browsers and versions.
  */
@@ -281,27 +331,21 @@ export interface HealthCheckResult {
  */
 export async function pingOllama(): Promise<HealthCheckResult> {
   try {
-    const response = await fetch(`${getOllamaBaseUrl()}${OLLAMA_ENDPOINTS.TAGS}`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS)
+    const ollama = createOllamaClient()
+
+    // Use Promise.race to implement timeout
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        const error = new DOMException('Timeout', 'AbortError')
+        reject(error)
+      }, HEALTH_CHECK_TIMEOUT_MS)
     })
-    
-    if (!response.ok) {
-      return {
-        success: false,
-        error: {
-          code: 'HTTP_ERROR',
-          message: `Ollama returned status ${response.status}`,
-          guidance: [
-            'Ollama server may be misconfigured',
-            'Check Ollama logs for errors',
-            'Try restarting Ollama'
-          ]
-        }
-      }
-    }
-    
+
+    await Promise.race([
+      ollama.list(),
+      timeoutPromise
+    ])
+
     return {
       success: true,
       status: 'online'

@@ -17,6 +17,7 @@
     "dexie": "^3.2.0",
     "json-editor-vue": "^0.14.0",
     "jsondiffpatch": "^0.6.0",
+    "ollama": "^0.6.3",
     "pinia": "^2.1.0",
     "pinia-plugin-persistedstate": "^3.2.0",
     "primeicons": "^6.0.0",

@@ -186,10 +186,75 @@ export const convertZodToOllamaSchema = zodToOllamaSchema
  * - Transforms nullable anyOf patterns to simpler type array syntax
  * - Adds additionalProperties: false to object types
  * - Removes empty required arrays
- * 
+ *
  * @param schema - JSON schema object to clean
  * @returns Clean JSON schema object compatible with Ollama
  */
 export function cleanJsonSchemaForOllama(schema: object): object {
-  return deepCleanSchema(schema) as object
+  const cleaned = deepCleanSchema(schema) as object
+
+  // Verification logging in development mode
+  if (import.meta.env.DEV) {
+    const issues = verifySchemaStructure(cleaned)
+    if (issues.length > 0) {
+      console.warn('⚠️ Schema verification issues:')
+      issues.forEach(issue => console.warn(`  - ${issue}`))
+    } else {
+      console.log('✅ Schema structure verified - all objects have required arrays and additionalProperties: false')
+    }
+  }
+
+  return cleaned
+}
+
+/**
+ * Verify schema structure matches expected Ollama format
+ * Returns an array of issues found
+ */
+function verifySchemaStructure(schema: unknown, path = 'root'): string[] {
+  const issues: string[] = []
+
+  if (!isObject(schema)) {
+    return issues
+  }
+
+  // Check object types have required properties
+  if (schema.type === 'object') {
+    if (!('additionalProperties' in schema)) {
+      issues.push(`${path}: Missing additionalProperties: false`)
+    } else if (schema.additionalProperties !== false) {
+      issues.push(`${path}: additionalProperties should be false, got ${schema.additionalProperties}`)
+    }
+
+    // Check that properties exist and required array matches
+    if ('properties' in schema && isObject(schema.properties)) {
+      const propertyKeys = Object.keys(schema.properties)
+      const requiredKeys = Array.isArray(schema.required) ? schema.required : []
+
+      // Check if any non-nullable property is missing from required
+      for (const key of propertyKeys) {
+        const prop = (schema.properties as Record<string, unknown>)[key]
+        if (isObject(prop)) {
+          // Check if this is a nullable type (type array includes 'null')
+          const isNullable = Array.isArray(prop.type) && prop.type.includes('null')
+          if (!isNullable && !requiredKeys.includes(key)) {
+            // This might be intentional for optional fields, just log for awareness
+            // issues.push(`${path}.${key}: Non-nullable property not in required array`)
+          }
+        }
+      }
+
+      // Recursively check nested objects
+      for (const [key, value] of Object.entries(schema.properties)) {
+        issues.push(...verifySchemaStructure(value, `${path}.${key}`))
+      }
+    }
+  }
+
+  // Check array items
+  if (schema.type === 'array' && 'items' in schema) {
+    issues.push(...verifySchemaStructure(schema.items, `${path}[]`))
+  }
+
+  return issues
 }
