@@ -45,7 +45,7 @@ export const useSchemaStore = defineStore('schema', () => {
       const schemaContent = zodToOllamaSchema(OrderListSchema)
       
       // Verify schema is not empty (protects against Zod version incompatibility)
-      if (!schemaContent || typeof schemaContent !== 'object') {
+      if (!schemaContent || typeof schemaContent !== 'object' || Array.isArray(schemaContent)) {
         console.error('❌ Generated schema is empty or invalid! Check Zod version compatibility.')
         console.error('Schema content:', schemaContent)
         return null

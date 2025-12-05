@@ -168,7 +168,7 @@ export function zodToOllamaSchema(zodSchema: ZodType): object {
   const cleanedSchema = deepCleanSchema(jsonSchema) as object
 
   // Debug logging in development mode
-  if (import.meta.env?.DEV) {
+  if (import.meta.env.DEV) {
     console.log('🔍 Generated Ollama schema:', JSON.stringify(cleanedSchema, null, 2))
   }
 
