@@ -44,6 +44,20 @@ export const useSchemaStore = defineStore('schema', () => {
       // Generate schema from Zod (like Pydantic's model_json_schema())
       const schemaContent = zodToOllamaSchema(OrderListSchema)
       
+      // Verify schema is not empty (protects against Zod version incompatibility)
+      if (!schemaContent || typeof schemaContent !== 'object' || Array.isArray(schemaContent)) {
+        console.error('❌ Generated schema is empty or invalid! Check Zod version compatibility.')
+        console.error('Schema content:', schemaContent)
+        return null
+      }
+      
+      const schemaObj = schemaContent as Record<string, unknown>
+      if (!('type' in schemaObj) || !('properties' in schemaObj)) {
+        console.error('❌ Generated schema is missing required fields! Check Zod version compatibility.')
+        console.error('Schema content:', schemaContent)
+        return null
+      }
+      
       const defaultSchema: JsonSchema = {
         id: DEFAULT_SCHEMA_ID,
         name: 'Order List',
