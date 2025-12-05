@@ -74,7 +74,10 @@ export async function listModels(): Promise<ApiResponse<OllamaModelInfo[]>> {
     // Map the official package response to our types
     const models: OllamaModelInfo[] = response.models.map(model => ({
       name: model.name,
-      modified_at: model.modified_at.toISOString(),
+      // Handle both Date objects and string timestamps
+      modified_at: model.modified_at instanceof Date
+        ? model.modified_at.toISOString()
+        : String(model.modified_at),
       size: model.size,
       digest: model.digest,
       details: {
@@ -126,7 +129,10 @@ export async function chat(request: OllamaChatRequest): Promise<ApiResponse<Olla
     // Map response to our types
     const chatResponse: OllamaChatResponse = {
       model: response.model,
-      created_at: response.created_at.toISOString(),
+      // Handle both Date objects and string timestamps
+      created_at: response.created_at instanceof Date
+        ? response.created_at.toISOString()
+        : String(response.created_at),
       message: {
         role: response.message.role,
         content: response.message.content,
@@ -198,7 +204,10 @@ export async function chatWithAbort(request: OllamaChatRequest): Promise<ApiResp
     // Map response to our types
     const chatResponse: OllamaChatResponse = {
       model: response.model,
-      created_at: response.created_at.toISOString(),
+      // Handle both Date objects and string timestamps
+      created_at: response.created_at instanceof Date
+        ? response.created_at.toISOString()
+        : String(response.created_at),
       message: {
         role: response.message.role,
         content: response.message.content,
